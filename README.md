@@ -19,19 +19,23 @@ There are modern stoneknappers, invited to create a new stone tool, and collecte
 
 Determine similarity, percentage composition from the soil site of microdebitage. 
 
+Background reading:
+
+https://github.com/vanderbilt-data-science/ancient-artifacts
+
 # Scope
 
 See above
 
-Analyze 50 samples of soil for evidence of lithic microdebitage. The utlimate goal is to determine which households likely hosts stoneknapping work. Compare the 
+Analyze 50 samples of soil for evidence of lithic microdebitage. The utlimate goal is to determine which households likely hosts stoneknapping work. 
 
 # Data
 
-TBD
+Modern stoneknapping, 30-50, representing the stages of specific work (representing what was being done at each stage, all labelled). 50 soil samples from Mayan village. These samples will be analyzed in the PartScan, data structure TBD. 
 
 ## Data security
 
-If there are any security concerns or requirements regarding the data, they should be described here.
+No issures
 
 ## Counts
 
@@ -43,11 +47,15 @@ Clearly identify each of the response variables of interest.  Any additional des
 
 # Timeline
 
-TBD
+End of February by the end of February (management is an issue, 100M datapoints)
+
+End of semester for models, predictions, ready for validation (flex time if only undergraduates). 
+
+Algorithm to analyze samples and assign probabilities. 
 
 # Project logistics
 
-**Sprint planning**:  
+**Sprint planning**: Friday (check with Phyllis, grad student, undergrads) 
 **Demo**:  
 
 **Data location**:  
@@ -56,6 +64,8 @@ TBD
 **Zoom link**:  
 
 The following contact information should be completed for the desired participants:
+
+Phyllis 
 
 Name  
 Physical Location  
