@@ -67,10 +67,13 @@ The following contact information should be completed for the desired participan
 
 Phyllis Johnson
 
+Graduate student
 Name  
 Physical Location  
 Email address  phyllis.s.johnson@vanderbilt.edu
 Phone number 
 
+
 Amy Rieth
+Undergraduate student
 Email address amy.e.rieth@Vanderbilt.Edu>
