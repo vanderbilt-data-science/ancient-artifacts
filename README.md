@@ -65,9 +65,12 @@ Algorithm to analyze samples and assign probabilities.
 
 The following contact information should be completed for the desired participants:
 
-Phyllis 
+Phyllis Johnson
 
 Name  
 Physical Location  
-Email address  
-Phone number  
+Email address  phyllis.s.johnson@vanderbilt.edu
+Phone number 
+
+Amy Rieth
+Email address amy.e.rieth@Vanderbilt.Edu>
