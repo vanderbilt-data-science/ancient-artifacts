@@ -1,0 +1,16 @@
+---
+title: "10-load-data"
+output: html_notebook
+---
+
+The purpose of this notebook is to load and clean the data.  It should also test the data (e.g., by assertr) to ensure that assumptions about the data are met, and store the cleaned and tested data.
+
+```{r}
+#Import helpful packages
+library(haven)
+library(vroom)
+library(boxr)
+library(janitor)
+library(assertr)
+```
+

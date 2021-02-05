@@ -1,0 +1,14 @@
+---
+title: "40-modeling"
+output: html_notebook
+---
+
+In this notebook, we'll model the data using appropriate methods.
+
+```{r}
+#Helpful imports
+library(tidymodels)
+library(h2o)
+library(mlflow)
+```
+
