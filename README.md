@@ -61,7 +61,7 @@ Algorithm to analyze samples and assign probabilities.
 **Data location**:  
 
 **Slack channel**:  
-**Zoom link**:  
+**Zoom link**:  https://vanderbilt.zoom.us/j/98991315219?pwd=YkhaaVdmcWFoblFEN3JLeTlaR1d2UT09&from=addon
 
 The following contact information should be completed for the desired participants:
 
