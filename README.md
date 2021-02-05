@@ -1,5 +1,5 @@
-# repo-template-r
-This is a template repository for data science projects done in R.
+# Ancient Mortars
+
 
 # Quick navigation
 [Background](#background)  
@@ -10,7 +10,7 @@ This is a template repository for data science projects done in R.
 
 # Background  
 
-Provide a broad overview of the purpose of the project.
+Mortars keep buildings together; their composition can elucidate who the builders were and how they built. This potential has not been realized fully because it requires analyzing 100s or 1000s of mortar samples objectively. We propose to achieve this with a dynamic image particle analyzer, a novel machine that processes a sample within minutes and measures dozens of variables – e.g., length, height, and transparency – for each particle. Beyond size distribution, we propose to use experimental archaeology to define the characteristics of crushed olive pits and other potential mortar constituents. We test our approach at the ancient port city of Caesarea Maritima in Israel where different cultures left stone buildings between 22 B.C.E. and 1265 C.E. Dynamic image analysis may help to identify construction work standardization as well as different mortar recipes of Roman-Judean, Byzantine, Abassid Muslim, and Crusader builders.
 
 # Scope
 
