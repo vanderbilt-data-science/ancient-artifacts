@@ -14,11 +14,11 @@ Mortars keep buildings together; their composition can elucidate who the builder
 
 # Scope
 
-If models are performing sufficiently well, publication-quality graphs and summary tables, accompanying methods section. Modeling outcomes of ODI, back pain, leg pain. There is another outcome, satisfaction score. For a later project, possibly return to work (Cox regression modeling). 
+TBD
 
 # Data
 
-Same data as was used in https://github.com/vanderbilt-data-science/spine. 
+TBD
 
 ## Data security
 
@@ -34,7 +34,7 @@ Clearly identify each of the response variables of interest.  Any additional des
 
 # Timeline
 
-Eight weeks. Last week of April for completion.
+TBD
 
 # Project logistics
 
