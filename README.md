@@ -3,13 +3,15 @@
 
 Analyzing lithic microdebitage (<4mm debris produced in the creation of stone tools) can reveal ancient stone manufacturing sites to provide insight into past cultural activity.  In this work, we build models to identify microdebitage particles from soil samples collected from a Mayan village.  These models are then used to characterize the soil composition to reveal ancient stoneknapping sites in Nacimiento, Guatemala.
 
-
 # Quick navigation
 [Background](#background)  
+[Scope](#scope)  
 [Data](#data)  
 [Models](#models)  
 [Timeline](#timeline)  
 [Logistics](#project-logistics)  
+[Resources](#resources)  
+[Contact Info](#contact-info)  
 
 # Background  
 
@@ -53,7 +55,13 @@ The deliverables of the project are models, code repository, and sample predicti
 **Coder's meeting**: TBD  at [Zoom link here](https://vanderbilt.zoom.us/j/98991315219?pwd=YkhaaVdmcWFoblFEN3JLeTlaR1d2UT09&from=addon)  
 **Demos**: Fridays at 2-3pm at [Zoom link here](https://vanderbilt.zoom.us/j/93451251344?pwd=UzVMbEdpYS83K2o1bk9QSEd4NldzQT09&from=addon)  
 **Data location**:  TBD  
-**Slack channel**:  `ancient-artifacts` on Data Science TIP Slack Workspace  
+**Slack channel**:  `ancient-artifacts` on Data Science TIP Slack Workspace 
+
+# Resources
+
+* **R Basics**: [RStudio Primers](https://rstudio.cloud/learn/primers/)
+* **Data Science with R and Tidyverse**: [R for Data Science, Hadley Wickham](https://r4ds.had.co.nz/)
+* **Git tutorials**: [Simple Guide](https://rogerdudler.github.io/git-guide/), [Learn Git Branching](https://learngitbranching.js.org/?locale=en_US)
 
 # Contact info
 
@@ -76,7 +84,7 @@ Email address  phyllis.s.johnson@vanderbilt.edu
 Phone number  615-587-0717  
 
 Amy Rieth, Undergraduate student  
-amy.e.rieth@Vanderbilt.Edu>
+amy.e.rieth@Vanderbilt.Edu
 
 Mark Raj, Undergraduate student  
 mark.j.raj@vanderbilt.edu
