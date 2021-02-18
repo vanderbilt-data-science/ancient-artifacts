@@ -17,7 +17,7 @@ Analyzing lithic microdebitage (<4mm debris produced in the creation of stone to
 
 The analysis of lithic microdebitage can illuminate ancient stone tool manufacturing practices to provide insight into past cultural activity.  In his dissertation, Dr. Markus Eberl studied the small Mayan site of Nacimiento in the Petexbatun region of Guatemala to investigate how a substantial change in regional political power affected the inhabitants and the local community.  One aspect of investigating the cultural dynamics in the region during the 7th and 8th centuries is to understand the the public structures and daily community interactions.
 
-The purpose of this project is to identify the location of ancient stone tool manufacturing sites within this village.  The locations of these manufacturing sites may be uncovered by analyzing the soil composition.  Although ancient stoneknappers (people who made stone tools) often cleared large and sharp debris from their area of work, lithic microdebitage - that is, particles < 4mm or 1/16th of an inch - would be very difficult to remove from their workspace.  Thus, evidence of lithic microdebitage in the soil can inform the location of these ancient stoneknapping sites and the methods used to create the stone tools.  Soil samples from 50 locations within the village were collected for analysis.
+The purpose of this project is to identify the location of ancient stone tool manufacturing areas within this village.  The locations of these manufacturing areas may be uncovered by analyzing the soil composition.  Although ancient stoneknappers (people who made stone tools) often cleared large and sharp debris from their area of work, lithic microdebitage - that is, particles < 4mm or 1/6th of an inch - would be very difficult to remove from their workspace.  Thus, evidence of lithic microdebitage in the soil can inform the location of these ancient stoneknapping sites and the methods used to create the stone tools.  Soil samples from 50 locations within the village were collected for analysis.
 
 Samples of microdebitage obtained from current stoneknappers provides a set of examplars to compare with the particles of the soil samples.  In order to characterize these samples, a particle analyzer can be used, which provides 40 measurements about each particle contained within the sample.  From this, the profiles of the soil samples can be computed to identify likely stoneknapping sites.
 
@@ -25,11 +25,11 @@ Samples of microdebitage obtained from current stoneknappers provides a set of e
 
 # Scope
 
-The motivating goal of this work is to identify the location(s) of ancient stone tool manufacturing sites given 50 soil samples of these sites and 30-50 stoneknapping microdebitage exemplar samples.  To achieve this result, this project will focus on generating a model or algorithm to characterize the composition of soil samples by identifying particles which are likely microdebitage.  The model may then be used to calculate the percentage composition of the entire soil sample which is microdebitage, enabling the ability to identify which households likely hosted stoneknapping wor.  A secondary objective is to establish a workflow for the management of data, although this will proceed in parallel with the modeling and characterization efforts.
+The motivating goal of this work is to identify the location(s) of ancient stone tool manufacturing sites given 50 soil samples from the Maya site of Nacimiento and 30-50 stoneknapping microdebitage exemplar samples.  To achieve this result, this project will focus on generating a model or algorithm to characterize the composition of soil samples by identifying particles which are likely microdebitage.  The model may then be used to calculate the percentage composition of the entire soil sample which is microdebitage, enabling the ability to identify which households likely hosted stoneknapping work.  A secondary objective is to establish a workflow for the management of data, although this will proceed in parallel with the modeling and characterization efforts.
 
 # Data
 
-Data management is expected to be an challenge and a workflow should be established to enable expeditious usage of the data.  Currently, there are 50 soil samples from the Mayan village of interest.  The goal is to identify the composition of these soil samples, and the contained particles will be characterized by the PartScan particle analyzer.  The particle analyzer measures 40 variables for every particle, and there are approximately ~500,000 particles in every sample.  The training data contains 30-50 collected and labelled microdebitage samples collected from modern stoneknappers, and represents the stages of specific work.
+Data management is expected to be an challenge and a workflow should be established to enable expeditious usage of the data.  Currently, there are 50 soil samples from the Mayan village of interest.  The goal is to identify the composition of these soil samples, and the contained particles will be characterized by the PartAn 3D particle analyzer.  The particle analyzer measures 40 variables for every particle, and there are approximately ~500,000 particles in every sample.  The training data contains 30-50 collected and labelled microdebitage samples collected from modern stoneknappers, and represents the stages of specific work.
 
 ## Data security
 
@@ -77,11 +77,8 @@ charreau.s.bell@vanderbilt.edu
 Umang Chaudhry  Data Scientist, Vanderbilt DSI  
 umang.chaudhry@vanderbilt.edu
 
-Phyllis Johnson  
-Graduate student  
-Physical Address Garland 217  
-Email address  phyllis.s.johnson@vanderbilt.edu  
-Phone number  615-587-0717  
+Phyllis Johnson, M.A. Graduate student  
+phyllis.s.johnson@vanderbilt.edu   
 
 Amy Rieth, Undergraduate student  
 amy.e.rieth@Vanderbilt.Edu
