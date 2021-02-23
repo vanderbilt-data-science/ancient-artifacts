@@ -9,6 +9,7 @@ Analyzing lithic microdebitage (<4mm debris produced in the creation of stone to
 [Data](#data)  
 [Models](#models)  
 [Timeline](#timeline)  
+[Repo structure](#repo-structure)  
 [Logistics](#project-logistics)  
 [Resources](#resources)  
 [Contact Info](#contact-info)  
@@ -49,12 +50,17 @@ The particle analyzer is expected to arrive and the workstation setup by the end
 
 The deliverables of the project are models, code repository, and sample predictions.  The expectation is that the model will be ready for comparative validation on new samples.
 
+# Repo structure
+The repo is structured as follows: All *0- (e.g., 10-, 20-, 30-) define the work required towards a particular thrust (e.g., "load-data"). Subfiles related to the task (e.g., 11-, 12-) should be created in order to explore and document necessary, relevant, or interesting subtasks.
+
+All files which appear in the repo should be able to run, and not generate errors, even if they are relatively midway in development of the proposed task. The only time code which generates errors should be committed to the repo is if asynchronous feedback is desired about resolving these errors.  All notebooks relating to the analysis should have a numerical prefix (e.g., 31-) followed by the exploration (e.g. 31-student-features). Any utility notebooks should not be numbered, but be named according to their purpose. All notebooks should have lowercase and hyphenated titles (e.g., 10-load-data not 10-Load-Data). All notebooks should adhere to literate programming practices (i.e., markdown writing to describe problems, assumptions, conclusions) and provide adequate although not superfluous code comments.
+
 # Project logistics
 
 **Sprint planning**: Mondays from 1-2pm  at [Zoom link here.](https://vanderbilt.zoom.us/j/98991315219?pwd=YkhaaVdmcWFoblFEN3JLeTlaR1d2UT09&from=addon)  
-**Coder's meeting**: TBD  at [Zoom link here](https://vanderbilt.zoom.us/j/98991315219?pwd=YkhaaVdmcWFoblFEN3JLeTlaR1d2UT09&from=addon)  
+**Coder's meeting**: Fridays from 1-2pm  at [Zoom link here](https://vanderbilt.zoom.us/j/98991315219?pwd=YkhaaVdmcWFoblFEN3JLeTlaR1d2UT09&from=addon)  
 **Demos**: Fridays at 2-3pm at [Zoom link here](https://vanderbilt.zoom.us/j/93451251344?pwd=UzVMbEdpYS83K2o1bk9QSEd4NldzQT09&from=addon)  
-**Data location**:  TBD  
+**Data location**:  Initial data contained within repo, and subsequent data projected to be stored on Box.  
 **Slack channel**:  `ancient-artifacts` on Data Science TIP Slack Workspace 
 
 # Resources
