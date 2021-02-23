@@ -3,6 +3,20 @@
 
 Analyzing lithic microdebitage (<4mm debris produced in the creation of stone tools) can reveal ancient stone manufacturing sites to provide insight into past cultural activity.  In this work, we build models to identify microdebitage particles from soil samples collected from a Mayan village.  These models are then used to characterize the soil composition to reveal ancient stoneknapping sites in Nacimiento, Guatemala.
 
+<table>
+  <tr>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/107074238-1210e680-67ae-11eb-9eab-25f6bc242f18.JPG" width=60% /></th>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/107075504-cfe8a480-67af-11eb-963a-573910138c9e.jpg" width=60% /></th>
+  </tr>
+  <tr>
+    <th>Modern stoneknapper creating stone tools</th>
+    <th>Map of the ancient Maya village of Nacimiento</th>
+  </tr>
+</table>
+
+
+
+
 # Quick navigation
 [Background](#background)  
 [Scope](#scope)  
