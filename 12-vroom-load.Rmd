@@ -38,6 +38,7 @@ templatedLithic <- vroom(file, delim = ",", .name_repair = ~ janitor::make_clean
 templatedLithic$img_id <- as.character(templatedLithic$img_id)
 templatedLithic <- templatedLithic [-c(1), ]
 
+
 templatedLithic
 ```
 
