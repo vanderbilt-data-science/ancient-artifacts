@@ -47,6 +47,15 @@ templatedLithic$img_id <- as.character(templatedLithic$img_id)
 #remove bad data in row 1
 templatedLithic <- templatedLithic [-c(1), ]
 
+#convert filters to pure logicals
+templatedLithic$filter0 <- batman::to_logical(templatedLithic$filter0, custom_false = c("reject"))
+templatedLithic$filter1 <- batman::to_logical(templatedLithic$filter1, custom_false = c("reject"))
+templatedLithic$filter2 <- batman::to_logical(templatedLithic$filter2, custom_false = c("reject"))
+templatedLithic$filter3 <- batman::to_logical(templatedLithic$filter3, custom_false = c("reject"))
+templatedLithic$filter4 <- batman::to_logical(templatedLithic$filter4, custom_false = c("reject"))
+templatedLithic$filter5 <- batman::to_logical(templatedLithic$filter5, custom_false = c("reject"))
+templatedLithic$filter6 <- batman::to_logical(templatedLithic$filter6, custom_false = c("reject"))
+
 
 templatedLithic
 ```
@@ -70,6 +79,14 @@ allData$img_id <- as.character(allData$img_id)
 #deletes all non-id particles (typically the units row)
 allData <- allData[!is.na(allData$id),] 
 
+#convert filters to pure logicals
+allData$filter0 <- batman::to_logical(allData$filter0, custom_false = c("reject"))
+allData$filter1 <- batman::to_logical(allData$filter1, custom_false = c("reject"))
+allData$filter2 <- batman::to_logical(allData$filter2, custom_false = c("reject"))
+allData$filter3 <- batman::to_logical(allData$filter3, custom_false = c("reject"))
+allData$filter4 <- batman::to_logical(allData$filter4, custom_false = c("reject"))
+allData$filter5 <- batman::to_logical(allData$filter5, custom_false = c("reject"))
+allData$filter6 <- batman::to_logical(allData$filter6, custom_false = c("reject"))
 
 allData
 
