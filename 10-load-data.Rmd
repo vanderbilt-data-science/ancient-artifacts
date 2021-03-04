@@ -12,5 +12,19 @@ library(vroom)
 library(boxr)
 library(janitor)
 library(assertr)
+library(tidyverse)
 ```
+# set working directory
+setwd('~/Documents/AncientArtifacts/ancient-artifacts')
 
+# read in each csv file into data frames
+LithicData <- read_csv("LithicExperimentalData.csv")
+ASData <- read_csv("ArchaeologicalSoilData.csv")
+
+# join data frames and clean column names
+ArtifactData <- rbind(LithicData,ASData) %>%
+  janitor::clean_names()
+
+# move filename to first column in data frame
+ArtifactData$filename <- filename
+select(ArtifactData, filename, everything())
