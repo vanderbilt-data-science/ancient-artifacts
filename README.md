@@ -3,12 +3,33 @@
 
 Analyzing lithic microdebitage (<4mm debris produced in the creation of stone tools) can reveal ancient stone manufacturing sites to provide insight into past cultural activity.  In this work, we build models to identify microdebitage particles from soil samples collected from a Mayan village.  These models are then used to characterize the soil composition to reveal ancient stoneknapping sites in Nacimiento, Guatemala.
 
+<table>
+  <tr>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/107074238-1210e680-67ae-11eb-9eab-25f6bc242f18.JPG" width=40% /></th>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/108857136-62f74c00-75b0-11eb-9836-ca2441beb350.jpg" width=40% /></th>
+  </tr>
+  <tr>
+    <th>Modern stoneknapper creating stone tools</th>
+    <th>A biface made by Mike McBride (who reproduces ancient stone tools) from Edwards Chert with copper tools. The bag above contains microdebitage that Mike produced while making the biface.</th>
+  </tr>
+  <tr>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/108857405-ac479b80-75b0-11eb-8ad4-7e244576f582.jpg" width=80% /></th>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/107075504-cfe8a480-67af-11eb-963a-573910138c9e.jpg" width=60% /></th>
+  </tr>
+  <tr>
+    <th>Mike McBride's tools for knapping stone.</th>
+    <th>Map of the ancient Maya village of Nacimiento</th>
+  </tr>
+</table>
+
+
 # Quick navigation
 [Background](#background)  
 [Scope](#scope)  
 [Data](#data)  
 [Models](#models)  
 [Timeline](#timeline)  
+[Repo structure](#repo-structure)  
 [Logistics](#project-logistics)  
 [Resources](#resources)  
 [Contact Info](#contact-info)  
@@ -49,12 +70,17 @@ The particle analyzer is expected to arrive and the workstation setup by the end
 
 The deliverables of the project are models, code repository, and sample predictions.  The expectation is that the model will be ready for comparative validation on new samples.
 
+# Repo structure
+The repo is structured as follows: All *0- (e.g., 10-, 20-, 30-) define the work required towards a particular thrust (e.g., "load-data"). Subfiles related to the task (e.g., 11-, 12-) should be created in order to explore and document necessary, relevant, or interesting subtasks.
+
+All files which appear in the repo should be able to run, and not generate errors, even if they are relatively midway in development of the proposed task. The only time code which generates errors should be committed to the repo is if asynchronous feedback is desired about resolving these errors.  All notebooks relating to the analysis should have a numerical prefix (e.g., 31-) followed by the exploration (e.g. 31-student-features). Any utility notebooks should not be numbered, but be named according to their purpose. All notebooks should have lowercase and hyphenated titles (e.g., 10-load-data not 10-Load-Data). All notebooks should adhere to literate programming practices (i.e., markdown writing to describe problems, assumptions, conclusions) and provide adequate although not superfluous code comments.
+
 # Project logistics
 
 **Sprint planning**: Mondays from 1-2pm  at [Zoom link here.](https://vanderbilt.zoom.us/j/98991315219?pwd=YkhaaVdmcWFoblFEN3JLeTlaR1d2UT09&from=addon)  
-**Coder's meeting**: TBD  at [Zoom link here](https://vanderbilt.zoom.us/j/98991315219?pwd=YkhaaVdmcWFoblFEN3JLeTlaR1d2UT09&from=addon)  
+**Coder's meeting**: Fridays from 1-2pm  at [Zoom link here](https://vanderbilt.zoom.us/j/98991315219?pwd=YkhaaVdmcWFoblFEN3JLeTlaR1d2UT09&from=addon)  
 **Demos**: Fridays at 2-3pm at [Zoom link here](https://vanderbilt.zoom.us/j/93451251344?pwd=UzVMbEdpYS83K2o1bk9QSEd4NldzQT09&from=addon)  
-**Data location**:  TBD  
+**Data location**:  Initial data contained within repo, and subsequent data projected to be stored on Box.  
 **Slack channel**:  `ancient-artifacts` on Data Science TIP Slack Workspace 
 
 # Resources
