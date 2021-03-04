@@ -5,16 +5,22 @@ Analyzing lithic microdebitage (<4mm debris produced in the creation of stone to
 
 <table>
   <tr>
-    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/107074238-1210e680-67ae-11eb-9eab-25f6bc242f18.JPG" width=60% /></th>
-    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/107075504-cfe8a480-67af-11eb-963a-573910138c9e.jpg" width=60% /></th>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/107074238-1210e680-67ae-11eb-9eab-25f6bc242f18.JPG" width=40% /></th>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/108857136-62f74c00-75b0-11eb-9836-ca2441beb350.jpg" width=40% /></th>
   </tr>
   <tr>
     <th>Modern stoneknapper creating stone tools</th>
+    <th>A biface made by Mike McBride (who reproduces ancient stone tools) from Edwards Chert with copper tools. The bag above contains microdebitage that Mike produced while making the biface.</th>
+  </tr>
+  <tr>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/108857405-ac479b80-75b0-11eb-8ad4-7e244576f582.jpg" width=80% /></th>
+    <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/107075504-cfe8a480-67af-11eb-963a-573910138c9e.jpg" width=60% /></th>
+  </tr>
+  <tr>
+    <th>Mike McBride's tools for knapping stone.</th>
     <th>Map of the ancient Maya village of Nacimiento</th>
   </tr>
 </table>
-
-
 
 
 # Quick navigation
