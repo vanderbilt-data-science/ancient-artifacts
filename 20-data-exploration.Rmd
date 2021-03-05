@@ -101,3 +101,18 @@ solidity_violin <- ggplot(total, aes(x= file_id, y=solidity)) +
   geom_violin()
 solidity_violin
 ```
+
+subplotting to get it together
+
+facet grid to help facilitate
+grid extra 
+
+run that notebook
+run my notebook
+
+execute perl from kniter
+snatches code from markdown
+source it 
+
+store in a .r data file
+data loaded back in - frowned upon 
