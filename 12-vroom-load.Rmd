@@ -1,0 +1,94 @@
+---
+title: "12-vroom-load"
+output: html_notebook
+---
+
+The purpose of this notebook is to load data from multiple sources into a single dataframe for analysis.
+```{r}
+#Import helpful packages
+library(haven)
+library(vroom)
+library(boxr)
+library(janitor)
+library(assertr)
+library(dplyr)
+library(magrittr)
+library(batman)
+
+setwd("~/Mark/Spring 2021/Research/ancient-artifacts")
+
+```
+
+Here we will begin with a single csv file into a dataframe
+
+```{r}
+#Store file name for access - test with single file name with csv files
+file <- "./LithicExperimentalData.csv"
+file
+
+lithic <- vroom(file, delim = ",")
+
+
+```
+
+Here we will attempt to create a templatized data frame for automated reading
+```{r}
+#set default column types
+column_data_types <- c( Id = "c", .default = "n", Filter0 = "c", Filter1 = "c", Filter2 = "c", Filter3 = "c"
+                        , Filter4 = "c", Filter5 = "c", Filter6 = "c")
+
+#read in file, clean names, add file_id column
+templatedLithic <- vroom(file, delim = ",", .name_repair = ~ janitor::make_clean_names(., case = "snake"),
+                         col_types = column_data_types, id = "file_id")   
+
+#convert img_id to char
+templatedLithic$img_id <- as.character(templatedLithic$img_id)
+
+#remove bad data in row 1
+templatedLithic <- templatedLithic [-c(1), ]
+
+#convert filters to pure logicals
+templatedLithic$filter0 <- batman::to_logical(templatedLithic$filter0, custom_false = c("reject"))
+templatedLithic$filter1 <- batman::to_logical(templatedLithic$filter1, custom_false = c("reject"))
+templatedLithic$filter2 <- batman::to_logical(templatedLithic$filter2, custom_false = c("reject"))
+templatedLithic$filter3 <- batman::to_logical(templatedLithic$filter3, custom_false = c("reject"))
+templatedLithic$filter4 <- batman::to_logical(templatedLithic$filter4, custom_false = c("reject"))
+templatedLithic$filter5 <- batman::to_logical(templatedLithic$filter5, custom_false = c("reject"))
+templatedLithic$filter6 <- batman::to_logical(templatedLithic$filter6, custom_false = c("reject"))
+
+
+templatedLithic
+```
+
+Here we will pull from a compressed folder and store in a single dataframe
+```{r}
+zip_file <- "./SoilData.zip"
+
+firstFile <- vroom(zip_file) #this only reads in the first file in this zip folder
+
+#reads all the file names in the zip folder
+filenames <- unzip(zip_file, list = TRUE)$Name
+
+#unzips folder, reads in with column types/clean names
+allData <- vroom(purrr::map(filenames, ~ unz(zip_file, .x)), delim = ",", id = "file_id", col_types = column_data_types, .name_repair = ~ janitor::make_clean_names(., case = "snake"),
+                 )
+
+#convers img_id to char
+allData$img_id <- as.character(allData$img_id)
+
+#deletes all non-id particles (typically the units row)
+allData <- allData[!is.na(allData$id),] 
+
+#convert filters to pure logicals
+allData$filter0 <- batman::to_logical(allData$filter0, custom_false = c("reject"))
+allData$filter1 <- batman::to_logical(allData$filter1, custom_false = c("reject"))
+allData$filter2 <- batman::to_logical(allData$filter2, custom_false = c("reject"))
+allData$filter3 <- batman::to_logical(allData$filter3, custom_false = c("reject"))
+allData$filter4 <- batman::to_logical(allData$filter4, custom_false = c("reject"))
+allData$filter5 <- batman::to_logical(allData$filter5, custom_false = c("reject"))
+allData$filter6 <- batman::to_logical(allData$filter6, custom_false = c("reject"))
+
+allData
+
+
+```
