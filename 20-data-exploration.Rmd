@@ -13,6 +13,7 @@ library(vroom)
 library(janitor)
 library(batman)
 library(ggplot2)
+library(gridExtra)
 
 
 ```
@@ -78,28 +79,30 @@ total <- rbind(templatedLithic, templatedSoil)
 
 lwviolin <- ggplot(total, aes(x= file_id, y=l_w_ratio)) + 
   geom_violin()
+
+##these are just straight up not working 
 lwviolin + stat_summary(fun.data="mean_sdl", mult=1, 
                  geom="crossbar", width=0.2 )
 lwviolin +  theme_classic()
 lwviolin + scale_fill_brewer(palette="Blues") + theme_classic()
-
-lwviolin
+##figure this out 
 
 circleviolin <- ggplot(total, aes(x= file_id, y=circularity)) + 
   geom_violin()
-circleviolin
 
 transpviolin <- ggplot(total, aes(x= file_id, y=transparency)) + 
   geom_violin()
-transpviolin
 
 angulviolin <- ggplot(total, aes(x= file_id, y=angularity)) + 
   geom_violin()
-angulviolin
 
 solidity_violin <- ggplot(total, aes(x= file_id, y=solidity)) + 
   geom_violin()
-solidity_violin
+
+grid.arrange(lwviolin,circleviolin,transpviolin ,angulviolin,solidity_violin,  nrow = 2)
+
+
+
 ```
 
 subplotting to get it together
