@@ -75,16 +75,19 @@ templatedSoil
 Let's begin creating violin plots
 ```{r}
 total <- rbind(templatedLithic, templatedSoil)
+total$file_id[total$file_id == "./ArchaeologicalSoilData.csv"] <- "Soil"
+total$file_id[total$file_id == "./LithicExperimentalData.csv"] <- "Lithic"
+total
 
 
 lwviolin <- ggplot(total, aes(x= file_id, y=l_w_ratio)) + 
   geom_violin()
 
-##these are just straight up not working 
-lwviolin + stat_summary(fun.data="mean_sdl", mult=1, 
-                 geom="crossbar", width=0.2 )
-lwviolin +  theme_classic()
-lwviolin + scale_fill_brewer(palette="Blues") + theme_classic()
+##these are not working 
+#lwviolin + stat_summary(fun.data="mean_sdl", mult=1, 
+#                 geom="crossbar", width=0.2 )
+#lwviolin +  theme_classic()
+#lwviolin + scale_fill_brewer(palette="Blues") + theme_classic()
 ##figure this out 
 
 circleviolin <- ggplot(total, aes(x= file_id, y=circularity)) + 
@@ -104,18 +107,15 @@ grid.arrange(lwviolin,circleviolin,transpviolin ,angulviolin,solidity_violin,  n
 
 
 ```
+Starting to use the data explorer package
 
-subplotting to get it together
+```{r}
+plot_histogram(templatedLithic)
+plot_histogram(templatedSoil)
 
-facet grid to help facilitate
-grid extra 
+plot_density(templatedLithic)
+plot_density(templatedSoil)
 
-run that notebook
-run my notebook
+create_report(templatedLithic)
+```
 
-execute perl from kniter
-snatches code from markdown
-source it 
-
-store in a .r data file
-data loaded back in - frowned upon 
