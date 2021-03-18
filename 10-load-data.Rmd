@@ -5,41 +5,49 @@ output: html_notebook
 
 The purpose of this notebook is to load and clean the data.  It should also test the data (e.g., by assertr) to ensure that assumptions about the data are met, and store the cleaned and tested data.
 
-```{r}
-#Import helpful packages
-library(haven)
-library(vroom)
-library(boxr)
-library(janitor)
-library(assertr)
-library(tidyverse)
+# Basic library imports
+Here, we use the package `pacman` in order to load packages.  Something that's great about this package is if the package isn't locally installed on your own system, instead of throwing errors, pacman will automatically install the package and then load it.
+```{r import packages}
+if (!require("pacman"))
+   install.packages("pacman")
+
+pacman::p_load(janitor, assertr, tidyverse, forcats)
 ```
-# set working directory
-setwd('~/Documents/AncientArtifacts/ancient-artifacts')
 
-# read in each csv file into data frames
-LithicData <- read_csv("LithicExperimentalData.csv")
-ASData <- read_csv("ArchaeologicalSoilData.csv")
+# Reading in files
+In this step, we'll read in the data.
+```{r read data}
+LithicData <- read_csv("LithicExperimentalData.csv") %>%
+   clean_names() %>%
+   mutate(particle_class = 'exp')
+ASData <- read_csv("ArchaeologicalSoilData.csv") %>%
+   clean_names() %>%
+   mutate(particle_class = 'site')
+```
 
-# clean up first row of data
- LithicData <- LithicData[-c(1),]
- ASData <- ASData[-c(1),]
+Something interesting about these files is that there are actually 2 header lines in these csv files.  The first line is the normal header, and the second line is a descriptor regarding the units of the measurement.  In the following step, we strip out that second line of units.
 
-# join data frames and clean column names
- ArtifactData <- rbind(LithicData,ASData) %>%
-   janitor::clean_names() 
+```{r clean up first row}
+# clean up first row of data and add class information
+LithicData <- LithicData[-c(1),] 
+ASData <- ASData[-c(1),]
+```
 
- ArtifactData <- mutate(ArtifactData, file_id = NA)
+Now, we combine the data into a single file, fix the resultant data types, and set up the factors in the correct order for modeling.
+```{r combine data}
+artifact_data <- LithicData %>%
+   bind_rows(ASData) %>%
+   mutate(across(c(-starts_with('Filter'), -particle_class), as.double)) %>%
+   mutate(id = as.character(id),
+          img_id = as.character(img_id),
+          particle_class = fct_relevel(as.factor(particle_class), 'exp', 'site')) %>%
+   select(particle_class, everything())
 
-# move file name to first column in data frame
- ArtifactData <- select(ArtifactData, file_id, everything())
+artifact_data %>% glimpse()
+```
+# Questions
+Here, we may want to know two things:
+1. What are those `filterx` variables?  Should we keep them in the dataset?
+2. What is the `hash` variable?  Should we keep it in the dataset?
 
-#convert filters to logicals
- ArtifactData$filter0 <- batman::to_logical(ArtifactData$filter0, custom_false = c("Reject"))
- ArtifactData$filter1 <- batman::to_logical(ArtifactData$filter1, custom_false = c("Reject"))
- ArtifactData$filter2 <- batman::to_logical(ArtifactData$filter2, custom_false = c("Reject"))
- ArtifactData$filter3 <- batman::to_logical(ArtifactData$filter3, custom_false = c("Reject"))
- ArtifactData$filter4 <- batman::to_logical(ArtifactData$filter4, custom_false = c("Reject"))
- ArtifactData$filter5 <- batman::to_logical(ArtifactData$filter5, custom_false = c("Reject"))
- ArtifactData$filter6 <- batman::to_logical(ArtifactData$filter6, custom_false = c("Reject"))
- ArtifactData
+Otherwise, we see that we have 49 columns and a combined total of 78,612 rows, where 73,313 are soil data and 5,299 are of lithic microdebitage.
