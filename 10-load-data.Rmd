@@ -87,3 +87,25 @@ assert(ArtifactData, within_bounds(1,Inf), l_w_ratio,
 # W/T Ratio: 1 (sphere)-infinity
 assert(ArtifactData, within_bounds(1,Inf), w_t_ratio,
        description = "Values must be within 1-infinity range.")
+=======
+ LithicData <- LithicData[-c(1),]
+ ASData <- ASData[-c(1),]
+
+# join data frames and clean column names
+ ArtifactData <- rbind(LithicData,ASData) %>%
+   janitor::clean_names() 
+
+ ArtifactData <- mutate(ArtifactData, file_id = NA)
+
+# move file name to first column in data frame
+ ArtifactData <- select(ArtifactData, file_id, everything())
+
+#convert filters to logicals
+ ArtifactData$filter0 <- batman::to_logical(ArtifactData$filter0, custom_false = c("Reject"))
+ ArtifactData$filter1 <- batman::to_logical(ArtifactData$filter1, custom_false = c("Reject"))
+ ArtifactData$filter2 <- batman::to_logical(ArtifactData$filter2, custom_false = c("Reject"))
+ ArtifactData$filter3 <- batman::to_logical(ArtifactData$filter3, custom_false = c("Reject"))
+ ArtifactData$filter4 <- batman::to_logical(ArtifactData$filter4, custom_false = c("Reject"))
+ ArtifactData$filter5 <- batman::to_logical(ArtifactData$filter5, custom_false = c("Reject"))
+ ArtifactData$filter6 <- batman::to_logical(ArtifactData$filter6, custom_false = c("Reject"))
+ ArtifactData
