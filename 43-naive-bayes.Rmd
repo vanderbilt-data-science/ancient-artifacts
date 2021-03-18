@@ -1,0 +1,77 @@
+---
+title: "43-naive-bayes"
+output: html_notebook
+---
+
+In this notebook, we'll model the data using appropriate methods.
+
+```{r}
+#Helpful imports
+library(tidymodels)
+library(h2o)
+library(mlflow)
+library(vroom)
+library(janitor)
+library(batman)
+```
+
+```{r}
+#Store file name for access - test with single file name with csv files
+lithic_file <- "./LithicExperimentalData.csv"
+lithic_file
+soil_file <- "./ArchaeologicalSoilData.csv"
+lithic <- vroom(lithic_file, delim = ",")
+```
+
+Here we will attempt to create a templatized data frame for automated reading
+```{r}
+#set default column types
+column_data_types <- c( Id = "c", .default = "n", Filter0 = "c", Filter1 = "c", Filter2 = "c", Filter3 = "c"
+                        , Filter4 = "c", Filter5 = "c", Filter6 = "c")
+#read in lithic_file, clean names, add file_id column
+templatedLithic <- vroom(lithic_file, delim = ",", .name_repair = ~ janitor::make_clean_names(., case = "snake"),
+                         col_types = column_data_types, id = "file_id")   
+#convert img_id to char
+templatedLithic$img_id <- as.character(templatedLithic$img_id)
+#remove bad data in row 1
+templatedLithic <- templatedLithic [-c(1), ]
+#convert filters to pure logicals
+templatedLithic$filter0 <- batman::to_logical(templatedLithic$filter0, custom_false = c("reject"))
+templatedLithic$filter1 <- batman::to_logical(templatedLithic$filter1, custom_false = c("reject"))
+templatedLithic$filter2 <- batman::to_logical(templatedLithic$filter2, custom_false = c("reject"))
+templatedLithic$filter3 <- batman::to_logical(templatedLithic$filter3, custom_false = c("reject"))
+templatedLithic$filter4 <- batman::to_logical(templatedLithic$filter4, custom_false = c("reject"))
+templatedLithic$filter5 <- batman::to_logical(templatedLithic$filter5, custom_false = c("reject"))
+templatedLithic$filter6 <- batman::to_logical(templatedLithic$filter6, custom_false = c("reject"))
+templatedLithic
+```
+
+```{r}
+#set default column types
+column_data_types <- c( Id = "c", .default = "n", Filter0 = "c", Filter1 = "c", Filter2 = "c", Filter3 = "c"
+                        , Filter4 = "c", Filter5 = "c", Filter6 = "c")
+#read in lithic_file, clean names, add file_id column
+templatedSoil <- vroom(soil_file, delim = ",", .name_repair = ~ janitor::make_clean_names(., case = "snake"),
+                         col_types = column_data_types, id = "file_id")   
+#convert img_id to char
+templatedSoil$img_id <- as.character(templatedSoil$img_id)
+#remove bad data in row 1
+templatedLithic <- templatedLithic [-c(1), ]
+#convert filters to pure logicals
+templatedSoil$filter0 <- batman::to_logical(templatedSoil$filter0, custom_false = c("reject"))
+templatedSoil$filter1 <- batman::to_logical(templatedSoil$filter1, custom_false = c("reject"))
+templatedSoil$filter2 <- batman::to_logical(templatedSoil$filter2, custom_false = c("reject"))
+templatedSoil$filter3 <- batman::to_logical(templatedSoil$filter3, custom_false = c("reject"))
+templatedSoil$filter4 <- batman::to_logical(templatedSoil$filter4, custom_false = c("reject"))
+templatedSoil$filter5 <- batman::to_logical(templatedSoil$filter5, custom_false = c("reject"))
+templatedSoil$filter6 <- batman::to_logical(templatedSoil$filter6, custom_false = c("reject"))
+templatedSoil
+```
+
+
+Let's begin creating violin plots
+```{r}
+total <- rbind(templatedLithic, templatedSoil)
+total$file_id[total$file_id == "./ArchaeologicalSoilData.csv"] <- "Soil"
+total$file_id[total$file_id == "./LithicExperimentalData.csv"] <- "Lithic"
+total
