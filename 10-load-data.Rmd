@@ -45,6 +45,13 @@ artifact_data <- LithicData %>%
 
 artifact_data %>% glimpse()
 ```
+
+Here's a quick check on the factor order of site:
+```{r factor order check}
+levels(artifact_data$particle_class)
+```
+Good.  We can see here that the 0th class is the "target" class.  Note that the "target" class for yardstick is the "0" class, so this is the correct ordering that we want.
+
 # Questions
 Here, we may want to know two things:
 1. What are those `filterx` variables?  Should we keep them in the dataset?
