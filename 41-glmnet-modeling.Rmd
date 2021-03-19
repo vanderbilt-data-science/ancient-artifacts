@@ -1,0 +1,184 @@
+---
+title: "41-glmnet-modeling"
+output: html_notebook
+---
+
+In this notebook, we use glmnet to perform modeling.  Our general approach will be to use hyperparameter tuning via cross-validation to identify the best performing hyperparameters,  In another notebook, we will investigate the performance of the model.
+
+**Note that prior to running this notebook, 10 and 40 must already have been run.**
+
+# Import relevant packages
+```{r glmnet specific modeling packages, results='hide'}
+pacman::p_load(glmnet, tictoc, vip)
+```
+
+```{r generate glmnet recipe and general info}
+#use_glmnet(particle_class ~ ., data=train_data)
+```
+
+# Glmnet tidymodels specifications
+Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid.
+```{r glmnet tidymodel specs}
+glmnet_recipe <- 
+  recipe(formula = particle_class ~ ., data = train_data) %>% 
+  update_role(id, img_id, starts_with('filter'), hash, new_role='no_model') %>%
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_predictors(), -all_nominal()) 
+
+glmnet_spec <- 
+  logistic_reg(penalty = tune(), mixture = tune()) %>% 
+  set_mode("classification") %>% 
+  set_engine("glmnet") 
+
+glmnet_workflow <- 
+  workflow() %>% 
+  add_recipe(glmnet_recipe) %>% 
+  add_model(glmnet_spec) 
+
+glmnet_parameters <- parameters(glmnet_spec)
+glmnet_grid <- grid_max_entropy(glmnet_parameters, size=20)
+```
+
+
+# Hyperparameter tuning (model selection) via cross-validation
+```{r perform hyperparameter tuning via xvalidation, results='hide'}
+tic()
+glmnet_tune <- glmnet_workflow %>%
+  tune_grid(resamples = cv_folds,
+            grid = glmnet_grid,
+            metrics = metric_set(accuracy, roc_auc, pr_auc, sens, yardstick::spec, ppv, npv, f_meas),
+            control = control_grid(verbose = TRUE, parallel_over='everything'))
+toc()
+```
+
+Now, let's collect the metrics to see how the model did over all of the folds and all of the metrics.
+```{r}
+tune_metrics <- glmnet_tune %>% 
+  collect_metrics()
+
+tune_metrics
+```
+We can also visualize this.
+```{r fig.height=6}
+tune_metrics %>%
+  mutate(.metric=fct_relevel(.metric, 'roc_auc', 'pr_auc', 'f_meas', 'accuracy', 'sens', 'spec')) %>%
+  ggplot(aes(x=penalty, y=mixture)) +
+  geom_point(aes(fill=mean), shape=22, size=6) + 
+  scale_x_log10(guide=guide_axis(angle=45)) + 
+  facet_wrap(ncol=4, facet='.metric') + 
+  scale_fill_gradient2(low='red', mid='yellow', high='green', midpoint=0.5) + 
+  labs(title='Mean performance of mixture/penalty hyperparameter combinations',
+       subtitle='By performance metric',
+         x='penalty (on log scale)',
+         y='mixture',
+         fill='mean cv value')
+
+```
+
+
+We can then select the "best" model according to some metric.  We'll decide to use pr_auc here just because our training data is so imbalanced.
+```{r}
+eval_metric = 'pr_auc'
+
+#show best parameters in terms of pr_auc
+glmnet_tune %>% show_best(eval_metric)
+
+#select best parameters
+best_glmnet_params <- glmnet_tune %>%
+  select_best(eval_metric)
+
+#show selected parameters
+best_glmnet_params
+```
+
+# Training fit
+Having identified the best hyperparameters, we can create the final fit on all of the training data:
+
+```{r fit workflow on training data}
+#finalize workflow with model hyperparameters
+glmnet_final_wf <- glmnet_workflow %>%
+  finalize_workflow(best_glmnet_params)
+glmnet_final_wf
+
+#using final workflow, fit on training data
+glmnet_final_fit <- glmnet_final_wf %>%
+  fit(data = train_data)
+```
+
+# Performance Evaluation
+## Cross validation metrics from best model
+```{r best model cross validation}
+#extract the cross validation metrics for the glmnet by fold (i.e., unsummarized)
+glmnet_fold_metrics <- glmnet_tune %>%
+  select(id, .metrics, .notes) %>%
+  unnest(.metrics)
+
+#get best glmnet metrics
+best_glmnet_fold_metrics <- glmnet_fold_metrics %>%
+  filter(.config==best_glmnet_params$.config[[1]])
+
+#plot
+best_glmnet_fold_metrics %>%
+  mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
+  ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
+  geom_boxplot() +
+  geom_jitter(aes(x=.metric, y=.estimate)) +
+  facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
+  labs(title='Distribution of cross validation metrics for best hyperparameter set',
+       subtitle='By metric',
+       x='metric',
+       y='metric estimate') +
+  theme(legend.position = "none")
+  
+```
+
+## Performance on training data as a whole
+```{r extract and visualize training performance}
+#get prediction class and probabilities
+hp_training_preds <- 
+  predict(glmnet_final_fit, train_data) %>%
+  bind_cols(predict(glmnet_final_fit, train_data, type = "prob")) %>% 
+  bind_cols(train_data %>% 
+              select(particle_class))
+
+#calculate confusion matrix
+train_conf <- hp_training_preds %>%
+  conf_mat(particle_class, .pred_class) 
+
+#get summary info
+t1 <- train_conf %>%
+  summary() %>%
+  select(-.estimator) %>%
+  gridExtra::tableGrob(rows=NULL, theme=gridExtra::ttheme_default(base_size=10))
+
+#plot cmat info
+cm <- train_conf %>%
+  autoplot(type='heatmap') +
+  labs(title='Confusion matrix for training data')
+
+gridExtra::grid.arrange(cm, t1, ncol=2)
+```
+## Variable importance evaluation
+What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
+
+```{r glmnet variable importance, fig.height=6}
+glmnet_vip <- glmnet_final_fit %>%
+  pull_workflow_fit() %>%
+  vi_model(lambda = .$spec$args$penalty) %>%
+  mutate(scaled_imp = Importance/sum(Importance)) %>%
+  mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
+
+glmnet_vip %>%
+  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
+  geom_col() +
+  coord_flip() +
+  labs(title='Scaled coefficient magnitudes of glmnet',
+       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
+                                         digits=5, nsmall=2, scientific=TRUE),
+                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
+                                         digits=5, nsmall=3),
+                      sep=' '),
+       y='scaled absolute importance',
+       x='variable')
+```
+
