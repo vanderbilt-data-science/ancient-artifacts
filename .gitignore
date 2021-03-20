@@ -20,6 +20,7 @@
 
 # R knit files
 *.nb.html
+!html_results/*.nb.html
 
 # produced vignettes
 vignettes/*.html
