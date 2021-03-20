@@ -295,3 +295,10 @@ Of previous interest was transparency, solidity, and other metrics for discernin
 1.  We can see here that the e and f length differentially contribute to discriminating between different particle types.  However, I find this curious since one would think these would be essentially the same value (i.e., highly correlated).
 2. `da` and `dp` additionally contribute differentially to the classification.  The confusion around this result points to previous suggestions regarding restricting the size of the particles in the data.  This may also assist with (1).
 3.  Previous assertions have been confirmed regarding the relation of `transparency`, `compactness`, `solidity`, and other features regarding their relationship with microdebitage.
+
+# Save markdown file
+Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
+```{r save markdown}
+fs::file_copy('41-glmnet-modeling.nb.html', './html_results/41-glmnet-modeling.nb.html', overwrite=TRUE)
+```
+
