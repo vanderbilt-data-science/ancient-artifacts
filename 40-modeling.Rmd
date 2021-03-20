@@ -3,7 +3,7 @@ title: "40-modeling"
 output: html_document
 ---
 
-In this notebook, we'll model the data using appropriate methods.  Here, we will add some of the generalized functions for modeling.
+This model will end up containing some generalized method that we'll use for all the models.  This will aid us in maintainability of our codebase, and also help us avoid copy/paste (and lack thereof) replication errors.
 
 **Note that this notebook requires 10 to already have been run.**
 
@@ -12,7 +12,7 @@ pacman::p_load(tidymodels, usemodels)
 ```
 
 # Split the data
-In this step, we perform a general data split as normal.  We'll split with 75% to training and the other 25% to testing, stratified by the class.  Note that we want to abstain from looking at the performance on the test data until the _very, VERY_ end.
+In this step, we perform a general data split as normal.  We'll split with 75% to training and the other 25% to testing, stratified by the class.  Note that we want to abstain from looking at the performance on the test data until the _very, VERY_ end.  We might also want to think about unsetting this seed once the code is developed, and just recording whatever seed is randomly generated.  This will allow us some variation on our generated data.
 
 ```{r ml data split}
 set.seed(2434)
@@ -23,9 +23,9 @@ test_data <- testing(data_split)
 ```
 
 
-# Add cross-validation splits for tuning
-Here, I'll add the cross validation splits for tuning.  We'll use 5 fold cross-validation here, and we'l stratify by particle class one again.
-```{r}
+# Cross-validation splits
+Here, I'll add the cross validation splits for tuning.  We'll use 5 fold cross-validation here, and we'll stratify by particle class one again.
+```{r xval data split}
 cv_folds <- vfold_cv(train_data, v=5, strata=particle_class)
 cv_folds
 ```

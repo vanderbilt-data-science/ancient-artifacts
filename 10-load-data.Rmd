@@ -1,13 +1,17 @@
 ---
 title: "10-load-data"
-output: html_notebook
+output:
+   html_notebook:
+      toc: yes
+      toc_depth: 3
+      toc_float: yes
 ---
 
 The purpose of this notebook is to load and clean the data.  It should also test the data (e.g., by assertr) to ensure that assumptions about the data are met, and store the cleaned and tested data.
 
 # Basic library imports
 Here, we use the package `pacman` in order to load packages.  Something that's great about this package is if the package isn't locally installed on your own system, instead of throwing errors, pacman will automatically install the package and then load it.
-```{r import packages}
+```{r import packages, results='hide'}
 if (!require("pacman"))
    install.packages("pacman")
 
@@ -16,7 +20,7 @@ pacman::p_load(janitor, assertr, tidyverse, forcats)
 
 # Reading in files
 In this step, we'll read in the data.
-```{r read data}
+```{r read data, results='hide'}
 LithicData <- read_csv("LithicExperimentalData.csv") %>%
    clean_names() %>%
    mutate(particle_class = 'exp')
@@ -45,6 +49,7 @@ artifact_data <- LithicData %>%
 
 artifact_data %>% glimpse()
 ```
+This looks generally correct with ambiguity surrounding the filter variables a well as the hash.  These could be useful, but we should check with the collaborator.
 
 Here's a quick check on the factor order of site:
 ```{r factor order check}
