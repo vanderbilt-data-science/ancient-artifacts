@@ -1,0 +1,53 @@
+---
+title: "MicroTrac Data"
+output:
+  word_document: default
+  html_document: default
+---
+# This is the code used by Phyllis for the Johnson, Eberl et. al article
+
+```{r}
+dir.create(path = "data")
+dir.create(path = "output")
+```
+
+```{r}
+my_data <- read.csv(file = "Combined MicroTrac.csv", header = TRUE)
+```
+
+
+```{r}
+set.seed(1234)
+dplyr::sample_n(my_data, 78612)
+```
+
+```{r}
+curv <- my_data$Curvature
+circ <- my_data$Circularity
+tran <- my_data$Transparency
+angu <- my_data$Angularity
+LW   <- my_data$LWRatio
+soli <- my_data$Solidity
+# MANOVA test,
+res.man <- manova(cbind(LWRatio, Circularity, Solidity, Transparency, Angularity, Curvature) ~ Type, data = my_data)
+summary(res.man)
+```
+
+```{r}
+summary.aov(res.man)
+```
+```{r}
+plot(angu, LW, main="L/W Ratio by Angularity",
+   xlab="Angularity", ylab="LW", pch=19)
+```
+
+```{r}
+library(ggfortify)
+library(ggplot2)
+```
+
+```{r}
+ggplot(data = my_data, aes(angu, LW, color = Type)) +
+  geom_point() +
+  scale_color_manual(values = c("Lithic" = "red", "Soil" = "blue"))
+```
