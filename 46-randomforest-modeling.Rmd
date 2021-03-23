@@ -299,6 +299,6 @@ Of previous interest was transparency, solidity, and other metrics for discernin
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
-fs::file_copy('41-glmnet-modeling.nb.html', './html_results/41-glmnet-modeling.nb.html', overwrite=TRUE)
+fs::file_copy('46-randomforest-modeling.nb.html', './html_results/46-randomforest-modeling.nb.html', overwrite=TRUE)
 ```
 
