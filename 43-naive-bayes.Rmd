@@ -6,10 +6,23 @@ output: html_notebook
 In this notebook, we'll model the data using appropriate methods.
 
 ```{r}
+
+install.packages('klaR')
+
+library(discrim)
+library(ranger)
+library(vip)
+
+
 #Helpful imports
 library(tidymodels)
 library(h2o)
 library(mlflow)
+
+library(readr)       # for importing data
+library(broom.mixed) # for converting bayesian models to tidy tibbles
+library(dotwhisker)  # for visualizing regression results
+
 library(vroom)
 library(janitor)
 library(batman)
@@ -74,4 +87,217 @@ Let's begin creating violin plots
 total <- rbind(templatedLithic, templatedSoil)
 total$file_id[total$file_id == "./ArchaeologicalSoilData.csv"] <- "Soil"
 total$file_id[total$file_id == "./LithicExperimentalData.csv"] <- "Lithic"
+
+total$file_id <- as.factor(total$file_id)
+
+
 total
+```
+
+Here we will follow the given tutorials with the provided experimental data set
+```{r}
+# Fix the random numbers by setting the seed 
+# This enables the analysis to be reproducible when random numbers are used 
+set.seed(555)
+# Put 3/4 of the data into the training set 
+data_split <- initial_split(total, strata = file_id, prop = 3/4)
+
+# Create data frames for the two sets:
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+
+#sets file_id as variable of interest (left of ~) and everything else as predictors
+soil_rec <- 
+  recipe(file_id ~ ., data = train_data) %>% 
+  update_role(id, img_id, new_role = "ID") #these are just id char values
+
+
+summary(soil_rec)
+
+#simple regression model 
+lr_mod <- 
+  logistic_reg() %>% 
+  set_engine("glm")
+
+
+#pair our model with our recipe with parsnip's workflow
+soil_wflow <- 
+  workflow() %>% 
+  add_model(lr_mod) %>% 
+  add_recipe(soil_rec)
+
+soil_wflow
+
+
+#fit the training data 
+soil_fit <- 
+  soil_wflow %>% 
+  fit(data = train_data)
+
+#tidy the result up 
+soil_fit %>% 
+  pull_workflow_fit() %>% 
+  tidy()
+
+#predict on the test data
+soil_pred <- 
+  predict(soil_fit, test_data, type = "prob") %>% 
+  bind_cols(test_data %>% select(file_id)) 
+soil_pred
+
+#lets plot how well we did with the prediction
+soil_pred %>% 
+  roc_curve(truth = file_id, .pred_Lithic) %>% 
+  autoplot()
+
+#see the area under the curve
+soil_pred %>% 
+  roc_auc(truth = file_id, .pred_Lithic)
+
+
+##THE DIFFERENCE BETWEEN STRATA/NO STRATE WAS NEARLY 75% TO 90% - NOT ENOUGH LITHIC TO DETERMINE UNLESS WE STRAT IT DURING THE SPLIT 
+```
+
+Random forest model walkthrough 
+```{r}
+
+#create random forest model 
+rf_mod <- 
+  rand_forest(trees = 1000) %>% 
+  set_engine("ranger") %>% 
+  set_mode("classification")
+
+rf_fit <- 
+  rf_mod %>% 
+  fit(file_id ~ ., data = train_data)
+
+rf_fit
+
+```
+
+```{r}
+
+#lets start resampling
+set.seed(345)
+folds <- vfold_cv(train_data, v = 10)
+folds
+
+#resampling not working bc of formula error
+
+soil_wflow <- 
+  workflow() %>% 
+  add_model(rf_mod) %>% 
+  add_recipe(soil_rec)
+
+soil_wflow
+
+rf_fit_rs <-
+  soil_wflow %>%
+  fit_resamples(folds)
+
+
+```
+Let's tune hyperparameters next 
+
+```{r}
+
+tune_spec <- 
+  decision_tree(
+    cost_complexity = tune(),
+    tree_depth = tune()
+  ) %>% 
+  set_engine("rpart") %>% 
+  set_mode("classification")
+
+tune_spec
+
+tree_grid <- grid_regular(cost_complexity(),
+                          tree_depth(),
+                          levels = 5)
+tree_grid
+set.seed(234)
+soil_folds <- vfold_cv(train_data)
+soil_folds
+
+
+set.seed(345)
+
+tree_wf <- workflow() %>%
+  add_model(tune_spec) %>%
+  add_formula(file_id ~ .)
+tree_wf
+
+tree_res <- 
+  tree_wf %>% 
+  tune_grid(
+    resamples = soil_folds,
+    grid = tree_grid
+    )
+
+tree_res
+
+```
+Now we will implement a Naive Bayes model 
+
+
+```{r}
+Use_g(particle_class ~ ., data=train_data)
+
+
+nb_mod <-
+  naive_Bayes(smoothness = tune(), Laplace = tune()) %>% 
+  set_engine("klaR")
+
+
+#pair our model with our recipe with parsnip's workflow
+soil_wflow <- 
+  workflow() %>% 
+  add_model(nb_mod) %>% 
+  add_recipe(soil_rec)
+
+soil_wflow
+
+#fit the training data 
+soil_fit <- 
+  soil_wflow %>% 
+  fit(data = train_data)
+
+#tidy the result up 
+soil_fit %>% 
+  pull_workflow_fit() %>% 
+  tidy()
+
+#predict on the test data
+soil_pred <- 
+  predict(soil_fit, test_data, type = "prob") %>% 
+  bind_cols(test_data %>% select(file_id)) 
+soil_pred
+
+#lets plot how well we did with the prediction
+soil_pred %>% 
+  roc_curve(truth = file_id, .pred_Lithic) %>% 
+  autoplot()
+
+#see the area under the curve
+soil_pred %>% 
+  roc_auc(truth = file_id, .pred_Lithic)
+
+```
+
+use_MODEL NAME generatres ALLLLL OF THE CODE YOU NEED!!
+
+LOOK AT EXAMPLE CODE ON THE EXAMPLE NOTEBOOK
+
+
+tune() i don't really know what to use - just do that later
+glm = general linaer model
+
+
+glmnet_parameters <- parameters(glmnet_spec) 
+	gets all the things to be done in one area
+
+glmnet_grind <_ max entropy(parameters, size = 20) -> how many values on each knob do we want to do!
+	grid is A WAYYY to do not just one
+
+YARDSTICK DOES ALL THE METRICS - does it by the 0th class - 0th class is the experimental not the soil 
+factor 1 needs to be experimental 
