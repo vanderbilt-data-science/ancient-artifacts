@@ -18,8 +18,9 @@ In this notebook, we use Naive Bayes to perform modeling.  Our general approach 
 
 ### Useful packages
 ```{r glmnet specific modeling packages, results='hide'}
-pacman::p_load(glmnet, tictoc, vip, tidytext)
+pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel)
 library(discrim)
+registerDoParallel()
 ```
 
 # Glmnet tidymodels specifications
