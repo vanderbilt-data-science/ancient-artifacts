@@ -14,7 +14,8 @@ In this notebook, we use glmnet to perform modeling.  Our general approach will 
 
 ### Useful packages
 ```{r glmnet specific modeling packages, results='hide'}
-pacman::p_load(glmnet, tictoc, vip, tidytext)
+pacman::p_load(glmnet, tictoc, vip, tidytext, xgboost, recipes)
+registerdoParallel()
 ```
 
 # Glmnet tidymodels specifications
@@ -25,33 +26,33 @@ The following code was used to generate the codebase that you'll find in the chu
 
 Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid.  These were generally obtained from the `use_*` functions of the `usemodels` package shown above.
 ```{r glmnet tidymodel specs}
-glmnet_recipe <- 
+xgb_recipe <- 
   recipe(formula = particle_class ~ ., data = train_data) %>% 
   update_role(id, img_id, starts_with('filter'), hash, new_role='no_model') %>%
   step_zv(all_predictors()) %>% 
   step_normalize(all_predictors(), -all_nominal()) 
 
-glmnet_spec <- 
-  logistic_reg(penalty = tune(), mixture = tune()) %>% 
+xgb_spec <- 
+  xgboost(eta = tune(), gamma = tune()) %>% 
   set_mode("classification") %>% 
-  set_engine("glmnet") 
+  set_engine("xgboost") 
 
-glmnet_workflow <- 
+xgb_workflow <- 
   workflow() %>% 
-  add_recipe(glmnet_recipe) %>% 
-  add_model(glmnet_spec) 
+  add_recipe(xgb_recipe) %>% 
+  add_model(xgb_spec) 
 
-glmnet_parameters <- parameters(glmnet_spec)
-glmnet_grid <- grid_max_entropy(glmnet_parameters, size=20)
+xgb_parameters <- parameters(xgb_spec)
+xgb_grid <- grid_max_entropy(xgb_parameters, size=2)
 ```
 
 
 # Hyperparameter tuning (model selection) via cross-validation
 ```{r perform hyperparameter tuning via xvalidation, results='hide'}
 tic()
-glmnet_tune <- glmnet_workflow %>%
+xgb_tune <- xgb_workflow %>%
   tune_grid(resamples = cv_folds,
-            grid = glmnet_grid,
+            grid = xgb_grid,
             metrics = metric_set(accuracy, roc_auc, pr_auc, sens, yardstick::spec, ppv, npv, f_meas),
             control = control_grid(verbose = TRUE, parallel_over='everything'))
 toc()
@@ -64,7 +65,7 @@ In this section, we're going to take a little bit of a look at the individualize
 We'll first decompress the tuning metrics a bit to get them into a more friendly form for processing.  
 ```{r arrange cross validation metrics}
 #extract the cross validation metrics for the glmnet by fold (i.e., unsummarized)
-glmnet_fold_metrics <- glmnet_tune %>%
+xgb_fold_metrics <- xgb_tune %>%
   select(id, .metrics, .notes) %>%
   unnest(.metrics)
 
@@ -72,7 +73,7 @@ head(glmnet_fold_metrics, 10)
 ```
 Now, let's visualize this generalized performance over all the models, both the fantastic ones and the horrible ones.
 ```{r visualize fold performance distributions, fig.height=6, fig.width=12}
-glmnet_fold_metrics %>%
+xgb_fold_metrics %>%
   mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
   ggplot(aes(x=.metric, y=.estimate, fill=id)) +
   geom_boxplot(outlier.colour = 'red', na.rm=TRUE) +
@@ -98,7 +99,7 @@ Given the usage of the default 0.5 classification threshold:
 Now, let's collect the metrics to see how the model did over all of the folds and all of the metrics in order to identify the best model from these candidates.  Note that this tabe looks similar to the prior tibble; the main difference here is that the results are aggregated over the folds (hence the `mean` and `n` columns).
 
 ```{r aggregating hyperparameter tuning/cross validation metrics}
-tune_metrics <- glmnet_tune %>% 
+tune_metrics <- xgb_tune %>% 
   collect_metrics()
 
 head(tune_metrics, 5)
@@ -128,15 +129,15 @@ Let's visualize this so we can make some sort of sense out of it.
 ```{r fig.height=6}
 tune_metrics %>%
   mutate(.metric=fct_relevel(.metric, 'roc_auc', 'pr_auc', 'f_meas', 'accuracy', 'sens', 'spec')) %>%
-  ggplot(aes(x=penalty, y=mixture)) +
+  ggplot(aes(x=eta, y=gamma)) +
   geom_point(aes(fill=mean), shape=22, size=6) + 
   scale_x_log10(guide=guide_axis(angle=45)) + 
   facet_wrap(ncol=4, facet='.metric') + 
   scale_fill_gradient2(low='red', mid='yellow', high='green', midpoint=0.5) + 
   labs(title='Mean performance of mixture/penalty hyperparameter combinations',
        subtitle='By performance metric',
-         x='penalty (on log scale)',
-         y='mixture',
+         x='eta',
+         y='gamma',
          fill='mean cv value')
 ```
 Here is a difficult-to-understand plot.  The objective of this visualization is to begin to digest the relationship between the two hyperparameters and the performance given a certain metric.  Recall that hyperparameter tuning evaluates all combinations of hyperparameters.  These combos are shown as a square on a particular "subplot" of a metric of interest.  Then, there are 20 squares since there are 20 models.  And, the arrangement of all the "intersection" squares is identical.
@@ -162,8 +163,8 @@ mdl_overall <- tune_metrics %>%
 mdl_overall %>%  
   ggplot(aes(x=reorder_within(str_remove(.config, 'Preprocessor1_'), -agg_perf, agg_perf_type),
              y=abs(agg_perf),
-             width=mixture)) +
-  geom_col(aes(fill=-log(penalty))) +
+             width=gamma)) +
+  geom_col(aes(fill=(eta))) +
   geom_label(aes(label=round(abs(agg_perf),3)), label.r=unit(0.0, "lines"), label.size=0, size=3) + 
   facet_wrap(~agg_perf_type, ncol=2, scales='free') +
   scale_x_reordered() + 
@@ -182,18 +183,18 @@ With this information in mind as well as more help from tidymodels, we can then 
 eval_metric <- 'pr_auc'
 
 #show best parameters in terms of pr_auc
-glmnet_tune %>% show_best(eval_metric)
+xgb_tune %>% show_best(eval_metric)
 ```
 
 We find here that this is exactly in line with our previous assessment of overall model performance. 
 
 ```{r select best parameters}
 #select best parameters
-best_glmnet_params <- glmnet_tune %>%
+best_xgb_params <- xgb_tune %>%
   select_best(eval_metric)
 
 #show selected parameters
-best_glmnet_params
+best_xgb_params
 ```
  We can see that Model 17 (best in overall rank and mean metric performance) predictably had the highest `pr_auc`.  We also can see that this is essentially a LASSO model based on the mixture, although the penalty is small yet not unexpected.  We will use these defined parameters to fit our model.
 
@@ -202,12 +203,12 @@ Having identified the best hyperparameters, we can create the final fit on all o
 
 ```{r fit workflow on training data}
 #finalize workflow with model hyperparameters
-glmnet_final_wf <- glmnet_workflow %>%
-  finalize_workflow(best_glmnet_params)
-glmnet_final_wf
+xgb_final_wf <- xgb_workflow %>%
+  finalize_workflow(best_xgb_params)
+xgb_final_wf
 
 #using final workflow, fit on training data
-glmnet_final_fit <- glmnet_final_wf %>%
+xgb_final_fit <- xgb_final_wf %>%
   fit(data = train_data)
 ```
 
@@ -216,11 +217,11 @@ glmnet_final_fit <- glmnet_final_wf %>%
 Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
 ```{r best model cross validation}
 #get best glmnet metrics
-best_glmnet_fold_metrics <- glmnet_fold_metrics %>%
-  filter(.config==best_glmnet_params$.config[[1]])
+best_xgb_fold_metrics <- xgb_fold_metrics %>%
+  filter(.config==best_xgb_params$.config[[1]])
 
 #plot
-best_glmnet_fold_metrics %>%
+best_xgbt_fold_metrics %>%
   mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
   ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
   geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
@@ -239,8 +240,8 @@ Here, we look at the confusion matrix for the entire training set as well as com
 ```{r extract and visualize training performance}
 #get prediction class and probabilities
 hp_training_preds <- 
-  predict(glmnet_final_fit, train_data) %>%
-  bind_cols(predict(glmnet_final_fit, train_data, type = "prob")) %>% 
+  predict(xgb_final_fit, train_data) %>%
+  bind_cols(predict(xgb_final_fit, train_data, type = "prob")) %>% 
   bind_cols(train_data %>% 
               select(particle_class))
 
@@ -271,20 +272,20 @@ These results allow us several important insights:
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
 
 ```{r glmnet variable importance, fig.height=6}
-glmnet_vip <- glmnet_final_fit %>%
+xgb_vip <- xgb_final_fit %>%
   pull_workflow_fit() %>%
-  vi_model(lambda = .$spec$args$penalty) %>%
+  vi_model(lambda = .$spec$args$eta) %>%
   mutate(scaled_imp = Importance/sum(Importance)) %>%
   mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
 
-glmnet_vip %>%
+xgb_vip %>%
   ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
   geom_col() +
   coord_flip() +
   labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
+       subtitle=str_c('eta:', format(pull_workflow_fit(xgb_final_fit)$spec$args$eta,
                                          digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
+                      'gamma:', format(pull_workflow_fit(xgb_final_fit)$spec$args$gamma[[2]],
                                          digits=5, nsmall=3),
                       sep=' '),
        y='scaled absolute importance',
