@@ -273,7 +273,7 @@ What parameters are contributing most strongly to the classification?  Do we see
 ```{r glmnet variable importance, fig.height=6}
 rf_vip <- rf_final_fit %>%
   pull_workflow_fit() %>%
-  vi_model(lambda = .$spec$args$penalty) %>%
+  vi_model(lambda = .$spec$args$min_n) %>%
   mutate(scaled_imp = Importance/sum(Importance)) %>%
   mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
 
@@ -282,9 +282,9 @@ rf_vip %>%
   geom_col() +
   coord_flip() +
   labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Penalty:', format(pull_workflow_fit(rf_final_fit)$spec$args$penalty,
+       subtitle=str_c('Penalty:', format(pull_workflow_fit(rf_final_fit)$spec$args$min_n,
                                          digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(rf_final_fit)$spec$args$mixture[[2]],
+                      'Mixture:', format(pull_workflow_fit(rf_final_fit)$spec$args$trees[[2]],
                                          digits=5, nsmall=3),
                       sep=' '),
        y='scaled absolute importance',
