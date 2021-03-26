@@ -14,7 +14,8 @@ In this notebook, we use random forest to perform modeling.  Our general approac
 
 ### Useful packages
 ```{r glmnet specific modeling packages, results='hide'}
-pacman::p_load(glmnet, tictoc, vip, tidytext, randomForest)
+pacman::p_load(glmnet, tictoc, vip, tidytext, randomForest, doParallel)
+registerDoParallel()
 ```
 
 # Glmnet tidymodels specifications
@@ -33,7 +34,7 @@ rf_recipe <-
 
 rf_spec <- 
   rand_forest(min_n = tune(), trees = tune()) %>% 
-  set_engine("randomForest", importance = "impurity") %>% 
+  set_engine("randomForest") %>% 
   set_mode("classification")
    
 rf_workflow <- 
@@ -128,15 +129,15 @@ Let's visualize this so we can make some sort of sense out of it.
 ```{r fig.height=6}
 tune_metrics %>%
   mutate(.metric=fct_relevel(.metric, 'roc_auc', 'pr_auc', 'f_meas', 'accuracy', 'sens', 'spec')) %>%
-  ggplot(aes(x=penalty, y=mixture)) +
+  ggplot(aes(x=min_n, y=trees)) +
   geom_point(aes(fill=mean), shape=22, size=6) + 
   scale_x_log10(guide=guide_axis(angle=45)) + 
   facet_wrap(ncol=4, facet='.metric') + 
   scale_fill_gradient2(low='red', mid='yellow', high='green', midpoint=0.5) + 
   labs(title='Mean performance of mixture/penalty hyperparameter combinations',
        subtitle='By performance metric',
-         x='penalty (on log scale)',
-         y='mixture',
+         x='min_n',
+         y='trees',
          fill='mean cv value')
 ```
 Here is a difficult-to-understand plot.  The objective of this visualization is to begin to digest the relationship between the two hyperparameters and the performance given a certain metric.  Recall that hyperparameter tuning evaluates all combinations of hyperparameters.  These combos are shown as a square on a particular "subplot" of a metric of interest.  Then, there are 20 squares since there are 20 models.  And, the arrangement of all the "intersection" squares is identical.
@@ -162,8 +163,8 @@ mdl_overall <- tune_metrics %>%
 mdl_overall %>%  
   ggplot(aes(x=reorder_within(str_remove(.config, 'Preprocessor1_'), -agg_perf, agg_perf_type),
              y=abs(agg_perf),
-             width=mixture)) +
-  geom_col(aes(fill=-log(penalty))) +
+             width=trees)) +
+  geom_col(aes(fill=min_n)) +
   geom_label(aes(label=round(abs(agg_perf),3)), label.r=unit(0.0, "lines"), label.size=0, size=3) + 
   facet_wrap(~agg_perf_type, ncol=2, scales='free') +
   scale_x_reordered() + 
@@ -275,16 +276,16 @@ rf_vip <- rf_final_fit %>%
   pull_workflow_fit() %>%
   vi_model(lambda = .$spec$args$min_n) %>%
   mutate(scaled_imp = Importance/sum(Importance)) %>%
-  mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
+  mutate(association = if_else(Sign == 'NEG', 'exp', 'site'))
 
 rf_vip %>%
   ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
   geom_col() +
   coord_flip() +
   labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Penalty:', format(pull_workflow_fit(rf_final_fit)$spec$args$min_n,
+       subtitle=str_c('Min_n:', format(pull_workflow_fit(rf_final_fit)$spec$args$min_n,
                                          digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(rf_final_fit)$spec$args$trees[[2]],
+                      'Trees:', format(pull_workflow_fit(rf_final_fit)$spec$args$trees[[2]],
                                          digits=5, nsmall=3),
                       sep=' '),
        y='scaled absolute importance',
