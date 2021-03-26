@@ -41,17 +41,17 @@ rf_workflow <-
   add_model(rf_spec) %>% 
   add_recipe(rf_recipe) 
 
-glmnet_parameters <- parameters(rf_spec)
-glmnet_grid <- grid_max_entropy(glmnet_parameters, size=2)
+rf_parameters <- parameters(rf_spec)
+rf_grid <- grid_max_entropy(rf_parameters, size=2)
 ```
 
 
 # Hyperparameter tuning (model selection) via cross-validation
 ```{r perform hyperparameter tuning via xvalidation, results='hide'}
 tic()
-glmnet_tune <- glmnet_workflow %>%
+glmnet_tune <- rf_workflow %>%
   tune_grid(resamples = cv_folds,
-            grid = glmnet_grid,
+            grid = rf_grid,
             metrics = metric_set(accuracy, roc_auc, pr_auc, sens, yardstick::spec, ppv, npv, f_meas),
             control = control_grid(verbose = TRUE, parallel_over='everything'))
 toc()
