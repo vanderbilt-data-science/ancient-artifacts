@@ -202,12 +202,12 @@ Having identified the best hyperparameters, we can create the final fit on all o
 
 ```{r fit workflow on training data}
 #finalize workflow with model hyperparameters
-glmnet_final_wf <- glmnet_workflow %>%
-  finalize_workflow(best_glmnet_params)
-glmnet_final_wf
+rf_final_wf <- rf_workflow %>%
+  finalize_workflow(best_rf_params)
+rf_final_wf
 
 #using final workflow, fit on training data
-glmnet_final_fit <- glmnet_final_wf %>%
+rf_final_fit <- rf_final_wf %>%
   fit(data = train_data)
 ```
 
@@ -216,11 +216,11 @@ glmnet_final_fit <- glmnet_final_wf %>%
 Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
 ```{r best model cross validation}
 #get best glmnet metrics
-best_glmnet_fold_metrics <- glmnet_fold_metrics %>%
-  filter(.config==best_glmnet_params$.config[[1]])
+best_rf_fold_metrics <- rf_fold_metrics %>%
+  filter(.config==best_rf_params$.config[[1]])
 
 #plot
-best_glmnet_fold_metrics %>%
+best_rf_fold_metrics %>%
   mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
   ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
   geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
@@ -239,8 +239,8 @@ Here, we look at the confusion matrix for the entire training set as well as com
 ```{r extract and visualize training performance}
 #get prediction class and probabilities
 hp_training_preds <- 
-  predict(glmnet_final_fit, train_data) %>%
-  bind_cols(predict(glmnet_final_fit, train_data, type = "prob")) %>% 
+  predict(rf_final_fit, train_data) %>%
+  bind_cols(predict(rf_final_fit, train_data, type = "prob")) %>% 
   bind_cols(train_data %>% 
               select(particle_class))
 
@@ -271,20 +271,20 @@ These results allow us several important insights:
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
 
 ```{r glmnet variable importance, fig.height=6}
-glmnet_vip <- glmnet_final_fit %>%
+rf_vip <- rf_final_fit %>%
   pull_workflow_fit() %>%
   vi_model(lambda = .$spec$args$penalty) %>%
   mutate(scaled_imp = Importance/sum(Importance)) %>%
   mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
 
-glmnet_vip %>%
+rf_vip %>%
   ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
   geom_col() +
   coord_flip() +
   labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
+       subtitle=str_c('Penalty:', format(pull_workflow_fit(rf_final_fit)$spec$args$penalty,
                                          digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
+                      'Mixture:', format(pull_workflow_fit(rf_final_fit)$spec$args$mixture[[2]],
                                          digits=5, nsmall=3),
                       sep=' '),
        y='scaled absolute importance',
