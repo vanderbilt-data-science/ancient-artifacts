@@ -32,7 +32,7 @@ rf_recipe <-
   step_normalize(all_predictors(), -all_nominal()) 
 
 rf_spec <- 
-  rand_forest(mtry = tune(), trees = tune()) %>% 
+  rand_forest(min_n = tune(), trees = tune()) %>% 
   set_engine("ranger", importance = "impurity") %>% 
   set_mode("classification")
    
