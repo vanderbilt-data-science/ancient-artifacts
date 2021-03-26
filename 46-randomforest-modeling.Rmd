@@ -25,7 +25,7 @@ The following code was used to generate the codebase that you'll find in the chu
 
 Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid.  These were generally obtained from the `use_*` functions of the `usemodels` package shown above.
 ```{r glmnet tidymodel specs}
-glmnet_recipe <- 
+rf_recipe <- 
   recipe(formula = particle_class ~ ., data = train_data) %>% 
   update_role(id, img_id, starts_with('filter'), hash, new_role='no_model') %>%
   step_zv(all_predictors()) %>% 
@@ -38,7 +38,7 @@ glmnet_spec <-
 
 glmnet_workflow <- 
   workflow() %>% 
-  add_recipe(glmnet_recipe) %>% 
+  add_recipe(rf_recipe) %>% 
   add_model(glmnet_spec) 
 
 glmnet_parameters <- parameters(glmnet_spec)
