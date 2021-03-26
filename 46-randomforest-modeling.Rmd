@@ -43,7 +43,7 @@ rf_workflow <-
   add_recipe(rf_recipe) 
 
 rf_parameters <- parameters(rf_spec)
-rf_grid <- grid_max_entropy(rf_parameters, size=2)
+rf_grid <- grid_max_entropy(rf_parameters, size=20)
 ```
 
 
