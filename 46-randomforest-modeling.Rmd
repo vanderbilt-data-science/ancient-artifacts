@@ -14,7 +14,7 @@ In this notebook, we use random forest to perform modeling.  Our general approac
 
 ### Useful packages
 ```{r glmnet specific modeling packages, results='hide'}
-pacman::p_load(glmnet, tictoc, vip, tidytext)
+pacman::p_load(glmnet, tictoc, vip, tidytext, randomForest)
 ```
 
 # Glmnet tidymodels specifications
@@ -33,7 +33,7 @@ rf_recipe <-
 
 rf_spec <- 
   rand_forest(min_n = tune(), trees = tune()) %>% 
-  set_engine("ranger", importance = "impurity") %>% 
+  set_engine("randomForest", importance = "impurity") %>% 
   set_mode("classification")
    
 rf_workflow <- 
@@ -49,7 +49,7 @@ rf_grid <- grid_max_entropy(rf_parameters, size=2)
 # Hyperparameter tuning (model selection) via cross-validation
 ```{r perform hyperparameter tuning via xvalidation, results='hide'}
 tic()
-glmnet_tune <- rf_workflow %>%
+rf_tune <- rf_workflow %>%
   tune_grid(resamples = cv_folds,
             grid = rf_grid,
             metrics = metric_set(accuracy, roc_auc, pr_auc, sens, yardstick::spec, ppv, npv, f_meas),
