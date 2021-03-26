@@ -31,17 +31,17 @@ rf_recipe <-
   step_zv(all_predictors()) %>% 
   step_normalize(all_predictors(), -all_nominal()) 
 
-glmnet_spec <- 
-  logistic_reg(penalty = tune(), mixture = tune()) %>% 
-  set_mode("classification") %>% 
-  set_engine("glmnet") 
-
-glmnet_workflow <- 
+rf_spec <- 
+  rand_forest() %>% 
+  set_engine("ranger", importance = "impurity") %>% 
+  set_mode("classification")
+   
+rf_workflow <- 
   workflow() %>% 
   add_recipe(rf_recipe) %>% 
-  add_model(glmnet_spec) 
+  add_model(rf_spec) 
 
-glmnet_parameters <- parameters(glmnet_spec)
+glmnet_parameters <- parameters(rf_spec)
 glmnet_grid <- grid_max_entropy(glmnet_parameters, size=20)
 ```
 
