@@ -64,15 +64,15 @@ In this section, we're going to take a little bit of a look at the individualize
 We'll first decompress the tuning metrics a bit to get them into a more friendly form for processing.  
 ```{r arrange cross validation metrics}
 #extract the cross validation metrics for the glmnet by fold (i.e., unsummarized)
-glmnet_fold_metrics <- glmnet_tune %>%
+rf_fold_metrics <- rf_tune %>%
   select(id, .metrics, .notes) %>%
   unnest(.metrics)
 
-head(glmnet_fold_metrics, 10)
+head(rf_fold_metrics, 10)
 ```
 Now, let's visualize this generalized performance over all the models, both the fantastic ones and the horrible ones.
 ```{r visualize fold performance distributions, fig.height=6, fig.width=12}
-glmnet_fold_metrics %>%
+rf_fold_metrics %>%
   mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
   ggplot(aes(x=.metric, y=.estimate, fill=id)) +
   geom_boxplot(outlier.colour = 'red', na.rm=TRUE) +
@@ -98,7 +98,7 @@ Given the usage of the default 0.5 classification threshold:
 Now, let's collect the metrics to see how the model did over all of the folds and all of the metrics in order to identify the best model from these candidates.  Note that this tabe looks similar to the prior tibble; the main difference here is that the results are aggregated over the folds (hence the `mean` and `n` columns).
 
 ```{r aggregating hyperparameter tuning/cross validation metrics}
-tune_metrics <- glmnet_tune %>% 
+tune_metrics <- rf_tune %>% 
   collect_metrics()
 
 head(tune_metrics, 5)
@@ -182,18 +182,18 @@ With this information in mind as well as more help from tidymodels, we can then 
 eval_metric <- 'pr_auc'
 
 #show best parameters in terms of pr_auc
-glmnet_tune %>% show_best(eval_metric)
+rf_tune %>% show_best(eval_metric)
 ```
 
 We find here that this is exactly in line with our previous assessment of overall model performance. 
 
 ```{r select best parameters}
 #select best parameters
-best_glmnet_params <- glmnet_tune %>%
+best_rf_params <- rf_tune %>%
   select_best(eval_metric)
 
 #show selected parameters
-best_glmnet_params
+best_rf_params
 ```
  We can see that Model 17 (best in overall rank and mean metric performance) predictably had the highest `pr_auc`.  We also can see that this is essentially a LASSO model based on the mixture, although the penalty is small yet not unexpected.  We will use these defined parameters to fit our model.
 
