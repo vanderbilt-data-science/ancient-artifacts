@@ -16,27 +16,33 @@ library(tidyverse)
 library(batman)
 library(dplyr)
 ```
-# set working directory
-setwd('~/Documents/AncientArtifacts/ancient-artifacts')
 
-# read in each csv file into data frames
+```{r set working directory}
+setwd('~/Documents/AncientArtifacts/ancient-artifacts')
+```
+
+```{r read in data}
 LithicData <- read_csv("LithicExperimentalData.csv")
 ASData <- read_csv("ArchaeologicalSoilData.csv")
+```
 
-# clean up first row of data
+```{r clean up first row}
 LithicData <- LithicData[-c(1),]
 ASData <- ASData[-c(1),]
+```
 
-# join data frames and clean column names
+```{r combine data}
 ArtifactData <- rbind(LithicData,ASData) %>%
   janitor::clean_names() 
  
 ArtifactData <- mutate(ArtifactData, file_id = NA)
+```
 
-# move file name to first column in data frame
+```{r set first column to file name}
 ArtifactData <- select(ArtifactData, file_id, everything())
+```
 
-#convert filters to logicals
+```{convert filters to logicals}
 ArtifactData$filter0 <- batman::to_logical(ArtifactData$filter0, custom_false = c("Reject"))
 ArtifactData$filter1 <- batman::to_logical(ArtifactData$filter1, custom_false = c("Reject"))
 ArtifactData$filter2 <- batman::to_logical(ArtifactData$filter2, custom_false = c("Reject"))
@@ -45,8 +51,9 @@ ArtifactData$filter4 <- batman::to_logical(ArtifactData$filter4, custom_false = 
 ArtifactData$filter5 <- batman::to_logical(ArtifactData$filter5, custom_false = c("Reject"))
 ArtifactData$filter6 <- batman::to_logical(ArtifactData$filter6, custom_false = c("Reject"))
 ArtifactData
+```
 
-# Here we will start writing asserts to validate the data.
+```{r Here we will start writing asserts to validate the data.} 
 
 # Angularity: 0 (perfect circle)-180 (many sharp edges)
 assert(ArtifactData, within_bounds(0,180), angularity, 
@@ -87,25 +94,5 @@ assert(ArtifactData, within_bounds(1,Inf), l_w_ratio,
 # W/T Ratio: 1 (sphere)-infinity
 assert(ArtifactData, within_bounds(1,Inf), w_t_ratio,
        description = "Values must be within 1-infinity range.")
-=======
- LithicData <- LithicData[-c(1),]
- ASData <- ASData[-c(1),]
 
-# join data frames and clean column names
- ArtifactData <- rbind(LithicData,ASData) %>%
-   janitor::clean_names() 
-
- ArtifactData <- mutate(ArtifactData, file_id = NA)
-
-# move file name to first column in data frame
- ArtifactData <- select(ArtifactData, file_id, everything())
-
-#convert filters to logicals
- ArtifactData$filter0 <- batman::to_logical(ArtifactData$filter0, custom_false = c("Reject"))
- ArtifactData$filter1 <- batman::to_logical(ArtifactData$filter1, custom_false = c("Reject"))
- ArtifactData$filter2 <- batman::to_logical(ArtifactData$filter2, custom_false = c("Reject"))
- ArtifactData$filter3 <- batman::to_logical(ArtifactData$filter3, custom_false = c("Reject"))
- ArtifactData$filter4 <- batman::to_logical(ArtifactData$filter4, custom_false = c("Reject"))
- ArtifactData$filter5 <- batman::to_logical(ArtifactData$filter5, custom_false = c("Reject"))
- ArtifactData$filter6 <- batman::to_logical(ArtifactData$filter6, custom_false = c("Reject"))
- ArtifactData
+```
