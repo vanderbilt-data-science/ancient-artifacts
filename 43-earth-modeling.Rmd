@@ -26,11 +26,35 @@ registerDoParallel()
 # Glmnet tidymodels specifications
 The following code was used to generate the codebase that you'll find in the chunk that follows.  Some additional steps were included for simplicity in processing during later steps.
 ```{r generate glmnet recipe and general info}
-#use_glmnet(particle_class ~ ., data=train_data)
+use_earth(particle_class ~ ., data=train_data)
 ```
 
 Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid.  These were generally obtained from the `use_*` functions of the `usemodels` package shown above.
 ```{r glmnet tidymodel specs}
+
+earth_recipe <- 
+  recipe(formula = particle_class ~ ., data = train_data) %>% 
+  step_string2factor(one_of(id, img_id, filter0, filter1, filter2, filter3, filter4, 
+    filter5, filter6)) %>% 
+  step_novel(all_nominal(), -all_outcomes()) %>% 
+  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  step_zv(all_predictors()) 
+
+earth_spec <- 
+  mars(num_terms = tune(), prod_degree = tune(), prune_method = "none") %>% 
+  set_mode("classification") %>% 
+  set_engine("earth") 
+
+earth_workflow <- 
+  workflow() %>% 
+  add_recipe(earth_recipe) %>% 
+  add_model(earth_spec) 
+
+earth_grid <- tidyr::crossing(num_terms = 2 * (1:6), prod_degree = 1:2) 
+
+
+```
+
 earth_recipe <- 
   recipe(formula = particle_class ~ ., data = train_data) %>% 
   update_role(id, img_id, starts_with('filter'), hash, new_role='no_model') %>%
@@ -38,7 +62,7 @@ earth_recipe <-
   step_normalize(all_predictors(), -all_nominal()) 
 
 earth_spec <-
-  earth::earth(thresh = tune(), penalty = tune()) %>% #no x value??
+  earth::earth( x = train_data$particle_class, y = train_data$particle_class) %>% #no x value??
   set_mode("classification") %>%
   set_engine("glmnet") 
 
@@ -50,15 +74,16 @@ earth_workflow <-
 
 nb_parameters <- parameters(nb_spec)
 nb_grid <- grid_max_entropy(nb_parameters, size=20) #THIS SHOULD BE 20
-```
+
 
 
 # Hyperparameter tuning (model selection) via cross-validation
 ```{r perform hyperparameter tuning via xvalidation, results='hide'}
 tic()
-nb_tune <- nb_workflow %>%
+earth_tune <- earth_workflow %>%
+  
   tune_grid(resamples = cv_folds,
-            grid = nb_grid,
+            grid = earth_grid,
             metrics = metric_set(accuracy, roc_auc, pr_auc, sens, yardstick::spec, ppv, npv, f_meas),
             control = control_grid(verbose = TRUE, parallel_over='everything'))
 toc()
