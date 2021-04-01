@@ -18,7 +18,7 @@ In this notebook, we use Naive Bayes to perform modeling.  Our general approach 
 
 ### Useful packages
 ```{r glmnet specific modeling packages, results='hide'}
-pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel)
+pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel, caret)
 library(discrim)
 registerDoParallel()
 ```
@@ -281,7 +281,7 @@ What parameters are contributing most strongly to the classification?  Do we see
 ##Not available with naive bayes!!
 nb_vip <- nb_final_fit %>%
   pull_workflow_fit() %>%
-  vi_model(lambda = .$spec$args$penalty) %>%
+  caret::varImp(lambda = .$spec$args$penalty) %>%
   mutate(scaled_imp = Importance/sum(Importance)) %>%
   mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
 
