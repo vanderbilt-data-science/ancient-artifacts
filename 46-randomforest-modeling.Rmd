@@ -134,7 +134,7 @@ tune_metrics %>%
   scale_x_log10(guide=guide_axis(angle=45)) + 
   facet_wrap(ncol=4, facet='.metric') + 
   scale_fill_gradient2(low='red', mid='yellow', high='green', midpoint=0.5) + 
-  labs(title='Mean performance of mixture/penalty hyperparameter combinations',
+  labs(title='Mean performance of min_n/mtry hyperparameter combinations',
        subtitle='By performance metric',
          x='min_n',
          y='trees',
@@ -163,7 +163,7 @@ mdl_overall <- tune_metrics %>%
 mdl_overall %>%  
   ggplot(aes(x=reorder_within(str_remove(.config, 'Preprocessor1_'), -agg_perf, agg_perf_type),
              y=abs(agg_perf),
-             width=1)) +
+             width=.5)) +
   geom_col(aes(fill=mtry)) +
   geom_label(aes(label=round(abs(agg_perf),3)), label.r=unit(0.0, "lines"), label.size=0, size=3) + 
   facet_wrap(~agg_perf_type, ncol=2, scales='free') +
