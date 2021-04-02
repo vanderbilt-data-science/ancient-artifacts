@@ -163,14 +163,14 @@ mdl_overall <- tune_metrics %>%
 mdl_overall %>%  
   ggplot(aes(x=reorder_within(str_remove(.config, 'Preprocessor1_'), -agg_perf, agg_perf_type),
              y=abs(agg_perf),
-             width=min_n)) +
+             width=1)) +
   geom_col(aes(fill=mtry)) +
   geom_label(aes(label=round(abs(agg_perf),3)), label.r=unit(0.0, "lines"), label.size=0, size=3) + 
   facet_wrap(~agg_perf_type, ncol=2, scales='free') +
   scale_x_reordered() + 
   coord_flip() +
   labs(title='General model performance over all metrics by mean overall rank',
-       subtitle='Bar appearance shows parameters (width=mixture, color=penalty)',
+       subtitle='Bar appearance shows parameters (width=min_n, color=mtry)',
        y='Mean over all metrics',
        x='Model name')
 ```
@@ -282,9 +282,9 @@ rf_vip %>%
   geom_col() +
   coord_flip() +
   labs(title='Variable Importance in Random Forest',
-       subtitle=str_c('Min_n:', format(pull_workflow_fit(rf_final_fit)$spec$args$min_n,
+       subtitle=str_c('Mtry:', format(pull_workflow_fit(rf_final_fit)$spec$args$mtry,
                                          digits=5, nsmall=2, scientific=TRUE),
-                      'Trees:', format(pull_workflow_fit(rf_final_fit)$spec$args$trees[[2]],
+                      'Min_n:', format(pull_workflow_fit(rf_final_fit)$spec$args$min_n[[2]],
                                          digits=5, nsmall=3),
                       sep=' '),
        y='scaled absolute importance',
