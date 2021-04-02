@@ -129,7 +129,7 @@ Let's visualize this so we can make some sort of sense out of it.
 ```{r fig.height=6}
 tune_metrics %>%
   mutate(.metric=fct_relevel(.metric, 'roc_auc', 'pr_auc', 'f_meas', 'accuracy', 'sens', 'spec')) %>%
-  ggplot(aes(x=min_n, y=trees)) +
+  ggplot(aes(x=mtry, y=min_n)) +
   geom_point(aes(fill=mean), shape=22, size=6) + 
   scale_x_log10(guide=guide_axis(angle=45)) + 
   facet_wrap(ncol=4, facet='.metric') + 
@@ -163,8 +163,8 @@ mdl_overall <- tune_metrics %>%
 mdl_overall %>%  
   ggplot(aes(x=reorder_within(str_remove(.config, 'Preprocessor1_'), -agg_perf, agg_perf_type),
              y=abs(agg_perf),
-             width=trees)) +
-  geom_col(aes(fill=min_n)) +
+             width=min_n)) +
+  geom_col(aes(fill=mtry)) +
   geom_label(aes(label=round(abs(agg_perf),3)), label.r=unit(0.0, "lines"), label.size=0, size=3) + 
   facet_wrap(~agg_perf_type, ncol=2, scales='free') +
   scale_x_reordered() + 
