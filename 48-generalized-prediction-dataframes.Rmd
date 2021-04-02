@@ -1,0 +1,20 @@
+---
+title: "48-generalized-prediction-dataframes"
+output: html_notebook
+---
+
+
+```{r}
+get_prediction_dataframes <- function(final_fit, train_data) {
+#get prediction class and probabilities
+hp_training_preds <- 
+  predict(final_fit, train_data) %>%
+  bind_cols(predict(final_fit, train_data, type = "prob")) %>% 
+  bind_cols(train_data %>% 
+              select(particle_class))
+
+return (hp_training_preds)
+}
+```
+
+
