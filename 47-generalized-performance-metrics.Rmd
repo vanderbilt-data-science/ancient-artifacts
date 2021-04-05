@@ -27,7 +27,7 @@ best_glmnet_fold_metrics %>%
        y='metric estimate') +
   theme(legend.position = "none")
 
-return best_fold_metrics
+return (best_fold_metrics)
 }
 
 ```
