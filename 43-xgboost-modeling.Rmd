@@ -39,7 +39,7 @@ xgb_workflow <-
   add_model(xgb_spec) 
 xgb_parameters <- parameters(xgb_spec) %>%
   update(mtry=mtry(c(1,ncol(train_data))))
-xgb_grid <- grid_max_entropy(xgb_parameters, size=2)
+xgb_grid <- grid_max_entropy(xgb_parameters, size=20)
 xgb_grid
 ```
 
@@ -262,7 +262,7 @@ xgb_vip <- xgb_final_fit %>%
   mutate(scaled_imp = Importance/sum(Importance))
 
 xgb_vip %>%
-  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
+  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=scaled_imp)) +
   geom_col() +
   coord_flip() +
   labs(title='Scaled coefficient magnitudes of glmnet',
