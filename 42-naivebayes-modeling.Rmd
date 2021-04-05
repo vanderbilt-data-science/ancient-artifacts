@@ -18,7 +18,7 @@ In this notebook, we use Naive Bayes to perform modeling.  Our general approach 
 
 ### Useful packages
 ```{r glmnet specific modeling packages, results='hide'}
-pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel, caret)
+pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel, caret, naivebayes)
 library(discrim)
 ```
 
@@ -33,7 +33,7 @@ nb_recipe <-
 nb_spec <-
   naive_Bayes(smoothness = tune(), Laplace = tune() ) %>%
   set_mode("classification") %>%
-  set_engine("klaR")
+  set_engine("naivebayes")
 
 nb_workflow <- 
   workflow() %>% 
@@ -41,7 +41,7 @@ nb_workflow <-
   add_model(nb_spec) 
 
 nb_parameters <- parameters(nb_spec)
-nb_grid <- grid_max_entropy(nb_parameters, size=2) #THIS SHOULD BE 20
+nb_grid <- grid_max_entropy(nb_parameters, size=20) #THIS SHOULD BE 20
 ```
 
 
@@ -249,26 +249,50 @@ gridExtra::grid.arrange(cm, t1, ncol=2)
 ## Variable imporance
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
 
-```{r glmnet variable importance, fig.height=6}
+```{r naive bayes variable importance, fig.height=6}
 ##Not available with naive bayes!!
-nb_vip <- nb_final_fit %>%
-  pull_workflow_fit() %>%
-  caret::varImp(lambda = .$spec$args$penalty) %>%
-  mutate(scaled_imp = Importance/sum(Importance)) %>%
-  mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
 
-nb_vip %>%
-  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
+nb_vip <- nb_final_fit %>%
+  pull_workflow_fit() 
+
+nb_vip$spec$args$
+#%>%
+  
+nb_vip <- caret::filterVarImp( x= nb_vip$fit$data$x , y = nb_vip$fit$data$y) 
+nb_vip <- as.data.frame(nb_vip)
+
+has_rownames(nb_vip)
+
+nb_vip <- rownames_to_column(nb_vip)
+names(nb_vip)[1] <- "var"
+
+nb_vip <- nb_vip %>% 
+  mutate(var = fct_reorder(var, exp))
+
+ggplot(nb_vip, aes(x=var, y=exp)) +
   geom_col() +
   coord_flip() +
-  labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
+    labs(title='Scaled coefficient magnitudes of glmnet',
+       subtitle=str_c('Smoothness:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
                                          digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
+                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
                                          digits=5, nsmall=3),
                       sep=' '),
        y='scaled absolute importance',
        x='variable')
+  
+#+#nb_vip %>%
+#  ggplot(aes(x=exp, y=site, fill=association))+
+#  geom_col() 
+#  coord_flip() +
+#  labs(title='Scaled coefficient magnitudes of glmnet',
+#       subtitle=str_c('Penalty:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
+#                                         digits=5, nsmall=2, scientific=TRUE),
+#                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
+#                                         digits=5, nsmall=3),
+#                      sep=' '),
+#       y='scaled absolute importance',
+#       x='variable')
 ```
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
