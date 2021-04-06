@@ -1,6 +1,8 @@
 ---
 title: "40-modeling"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 This model will end up containing some generalized method that we'll use for all the models.  This will aid us in maintainability of our codebase, and also help us avoid copy/paste (and lack thereof) replication errors.

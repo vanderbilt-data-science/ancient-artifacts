@@ -41,7 +41,7 @@ nb_workflow <-
   add_model(nb_spec) 
 
 nb_parameters <- parameters(nb_spec)
-nb_grid <- grid_max_entropy(nb_parameters, size=20) #THIS SHOULD BE 20
+nb_grid <- grid_max_entropy(nb_parameters, size=20)
 ```
 
 
@@ -250,18 +250,11 @@ gridExtra::grid.arrange(cm, t1, ncol=2)
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
 
 ```{r naive bayes variable importance, fig.height=6}
-##Not available with naive bayes!!
-
 nb_vip <- nb_final_fit %>%
-  pull_workflow_fit() 
-
-nb_vip$spec$args$
-#%>%
+  pull_workflow_fit()
   
 nb_vip <- caret::filterVarImp( x= nb_vip$fit$data$x , y = nb_vip$fit$data$y) 
 nb_vip <- as.data.frame(nb_vip)
-
-has_rownames(nb_vip)
 
 nb_vip <- rownames_to_column(nb_vip)
 names(nb_vip)[1] <- "var"
