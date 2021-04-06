@@ -6,26 +6,85 @@ output: html_notebook
 
 
 ```{r}
+
 variable_importance <-function(final_fit) {
-vip <- final_fit %>%
+  if(model_type == "xgboost") { 
+xgb_vip <- xgb_final_fit %>%
+  pull_workflow_fit() %>%
+  vi_model() %>%
+  mutate(scaled_imp = Importance/sum(Importance))
+
+xgb_vip %>%
+  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
+  geom_col() +
+  coord_flip() +
+  labs(title='Scaled coefficient magnitudes of glmnet',
+       subtitle=str_c('eta:', format(pull_workflow_fit(xgb_final_fit)$spec$args$mtry,
+                                         digits=5, nsmall=2, scientific=TRUE),
+                      'gamma:', format(pull_workflow_fit(xgb_final_fit)$spec$args$min_n[[2]],
+                                         digits=5, nsmall=3),
+                      sep=' '),
+       y='scaled absolute importance',
+       x='variable')}
+  
+else if (model_type == "tree") {
+rf_vip <- rf_final_fit %>%
+  pull_workflow_fit() %>%
+  vi_model() %>%
+  mutate(scaled_imp = Importance/sum(Importance)) 
+
+rf_vip %>%
+  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=scaled_imp)) +
+  geom_col() +
+  coord_flip() +
+  labs(title='Variable Importance in Random Forest',
+       subtitle=str_c('Mtry:', format(pull_workflow_fit(rf_final_fit)$spec$args$mtry,
+                                         digits=5, nsmall=2, scientific=TRUE),
+                      'Min_n:', format(pull_workflow_fit(rf_final_fit)$spec$args$min_n[[2]],
+                                         digits=5, nsmall=3),
+                      sep=' '),
+       y='scaled absolute importance',
+       x='variable')}
+
+  else if (model_type == "naivebayes") {
+nb_vip <- nb_final_fit %>%
+  pull_workflow_fit() %>%
+  caret::varImp(lambda = .$spec$args$penalty) %>%
+  mutate(scaled_imp = Importance/sum(Importance)) %>%
+  mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
+
+nb_vip %>%
+  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
+  geom_col() +
+  coord_flip() +
+  labs(title='Scaled coefficient magnitudes of glmnet',
+       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
+                                         digits=5, nsmall=2, scientific=TRUE),
+                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
+                                         digits=5, nsmall=3),
+                      sep=' '),
+       y='scaled absolute importance',
+       x='variable') }
+  
+else {
+glmnet_vip <- glmnet_final_fit %>%
   pull_workflow_fit() %>%
   vi_model(lambda = .$spec$args$penalty) %>%
   mutate(scaled_imp = Importance/sum(Importance)) %>%
   mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
 
-vip %>%
+glmnet_vip %>%
   ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
   geom_col() +
   coord_flip() +
   labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Penalty:', format(pull_workflow_fit(final_fit)$spec$args$penalty,
+       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
                                          digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(final_fit)$spec$args$mixture[[2]],
+                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
                                          digits=5, nsmall=3),
                       sep=' '),
        y='scaled absolute importance',
-       x='variable')
-
+       x='variable')}
 return (vip)
 }
 ```
