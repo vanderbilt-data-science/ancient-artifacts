@@ -1,15 +1,18 @@
 ---
 title: "42-naivebayes-modeling"
 output:
-  html_document:
+  pdf_document:
     toc: yes
     toc_depth: '3'
-    df_print: paged
   html_notebook:
     toc: yes
     toc_depth: 3
     toc_float: yes
     number_sections: yes
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
 ---
 
 In this notebook, we use Naive Bayes to perform modeling.  Our general approach will be to use hyperparameter tuning via cross-validation to identify the best performing hyperparameters,  In another notebook, we will investigate the performance of the model.
@@ -22,7 +25,7 @@ pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel, caret, naivebayes)
 library(discrim)
 ```
 
-Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid.  These were generally obtained from the `use_*` functions of the `usemodels` package shown above.
+Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid. For the Naive Bayes model, the general usemodels template code was not supported but using the naivebayes package model allowed for easy 1:1 translation
 ```{r naive bayes tidymodel specs}
 nb_recipe <- 
   recipe(formula = particle_class ~ ., data = train_data) %>% 
@@ -81,6 +84,7 @@ nb_fold_metrics %>%
        y='metric distribution') +
   scale_x_discrete(labels=NULL)
 ```
+Here we can see some interesting fold-specific results. There tended to be a large distubution for Fold 2 and fold 3 performance while Fold 3 and 1 were consistently small in terms of distribution. 
 
 # Identifying the "best" model
 Now, let's collect the metrics to see how the model did over all of the folds and all of the metrics in order to identify the best model from these candidates.  Note that this table looks similar to the prior tibble; the main difference here is that the results are aggregated over the folds (hence the `mean` and `n` columns).
@@ -108,6 +112,8 @@ tune_metrics %>%
   scale_x_discrete(labels=NULL)
 
 ```
+Here, we can see a relatively tight distribution for ppv and rather large distributions for spec, sense, and npv. However, all of these have a very small scale for their axises so that may be entirely normal.
+One additional observation is that for accuracy and pr_auc, there are several very high-performing outliers. These will likely be our candidates for the "best" model but them being outliers is an interesting area to be explored. 
 
 ## Making sense of the hyperparameters and their influence
 
@@ -128,7 +134,7 @@ tune_metrics %>%
 ```
 Here is a difficult-to-understand plot.  The objective of this visualization is to begin to digest the relationship between the two hyperparameters and the performance given a certain metric.  Recall that hyperparameter tuning evaluates all combinations of hyperparameters.  These combos are shown as a square on a particular "subplot" of a metric of interest.  Then, there are 20 squares since there are 20 models.  And, the arrangement of all the "intersection" squares is identical.
 
-What is of interest here is the color of the squares.  Red indicates that the performance is poor, and green indicates that the performance is great.
+What is of interest here is the color of the squares.  Red indicates that the performance is poor, and green indicates that the performance is great. What is interesting here is that all of the squares within a given graph typically had the same color no matter the value of our two hyperparameters. This may suggest these hyperparameters don't affect the cv value as much as the model itself does in terms of classification. 
 
 ## Looking at all of the metrics together to select a model
 One possible way of evaluating a good model might be to rank the model according to its performance across all of the metrics.  This allows us to get a bit away from the values themselves.  However, we can also look at the values themselves and investigate the relationship.
@@ -160,6 +166,8 @@ mdl_overall %>%
        x='Model name')
 ```
 
+Here, the height of each bar represents smoothness while the color represents the Laplace parameter. Overall, we see skinnier bars, or those with a lower smoothness, perform better than those with a higher smoothness. Additionally, the visual color does not immediately seem to correlate with model performance with the Laplace. 
+
 ## Selecting the best model
 With this information in mind as well as more help from tidymodels, we can then select the "best" model.  One way to do this is to simply choose according to some metric.  We'll decide to use `pr_auc` here just because our training data is so imbalanced.
 
@@ -170,7 +178,7 @@ eval_metric <- 'pr_auc'
 nb_tune %>% show_best(eval_metric)
 ```
 
-We find here that this is exactly in line with our previous assessment of overall model performance. 
+We find here that this is exactly in line with our previous assessment of overall model performance. Laplace does not seem to have much of an affect on the mean while the lower smoothness levels are very critical. 
 
 ```{r select best parameters}
 #select best parameters
@@ -180,7 +188,7 @@ best_nb_params <- nb_tune %>%
 #show selected parameters
 best_nb_params
 ```
- We can see that Model 3 (best in overall rank and mean metric performance) predictably had the highest `pr_auc`. 
+ We can see that Model 14 (best in overall rank and mean metric performance) predictably had the highest `pr_auc`. 
 
 # Training fit
 Having identified the best hyperparameters, we can create the final fit on all of the training data:
@@ -217,6 +225,7 @@ best_nb_fold_metrics %>%
        y='metric estimate') +
   theme(legend.position = "none")
 ```
+We see very high values for accuracy, npv, and spec, all of which point to this model being one of the "outliers" we discussed earlier. 
 
 ## Performance on training data as a whole
 Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
@@ -245,6 +254,8 @@ cm <- train_conf %>%
 
 gridExtra::grid.arrange(cm, t1, ncol=2)
 ```
+Here we see there were roughly 7,500 particles that we truly site particles that were classified as lithic samples. The overall accuracy remains around 83.7% and precision at 20%.
+
 # Explaining the model
 ## Variable imporance
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
@@ -287,6 +298,9 @@ ggplot(nb_vip, aes(x=var, y=exp)) +
 #       y='scaled absolute importance',
 #       x='variable')
 ```
+Here we can clearly see a common thread through many of the models. The Naive bayes model also weighted transparency incredibly high followed by the typical compactness, roundness, and l_t_ratio which were also common candidates for high importance variables. 
+
+
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
