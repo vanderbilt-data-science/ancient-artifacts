@@ -24,7 +24,7 @@ The following code was used to generate the codebase that you'll find in the chu
 ```
 
 Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid.  These were generally obtained from the `use_*` functions of the `usemodels` package shown above.
-```{r glmnet tidymodel specs}
+```{r tidymodel specs}
 rf_recipe <- 
   recipe(formula = particle_class ~ ., data = train_data) %>% 
   update_role(id, img_id, starts_with('filter'), hash, new_role='no_model') %>%
@@ -102,7 +102,7 @@ Now, let's collect the metrics to see how the model did over all of the folds an
 tune_metrics <- rf_tune %>% 
   collect_metrics()
 
-head(tune_metrics, 5)
+head(tune_metrics, 10)
 ```
 
 ## Basic performance overview
@@ -136,8 +136,8 @@ tune_metrics %>%
   scale_fill_gradient2(low='red', mid='yellow', high='green', midpoint=0.5) + 
   labs(title='Mean performance of min_n/mtry hyperparameter combinations',
        subtitle='By performance metric',
-         x='min_n',
-         y='trees',
+         x='mtry',
+         y='min_n',
          fill='mean cv value')
 ```
 Here is a difficult-to-understand plot.  The objective of this visualization is to begin to digest the relationship between the two hyperparameters and the performance given a certain metric.  Recall that hyperparameter tuning evaluates all combinations of hyperparameters.  These combos are shown as a square on a particular "subplot" of a metric of interest.  Then, there are 20 squares since there are 20 models.  And, the arrangement of all the "intersection" squares is identical.
