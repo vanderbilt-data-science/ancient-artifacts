@@ -45,17 +45,67 @@ artifact_data <- LithicData %>%
    mutate(id = as.character(id),
           img_id = as.character(img_id),
           particle_class = fct_relevel(as.factor(particle_class), 'exp', 'site')) %>%
-   select(particle_class, everything())
+   dplyr::select(particle_class, everything())
 
 artifact_data %>% glimpse()
 ```
 This looks generally correct with ambiguity surrounding the filter variables a well as the hash.  These could be useful, but we should check with the collaborator.
+
+Here I removed all data points greater than 6.0 mm within the variables f_length, f_thickness, f_width, e_length, e_thickness, e_width. This reduces the dataset to only microdebitage.
+
+```{r}
+filter(artifact_data, f_width < 6.0, f_thickness < 6.0, f_length < 6.0, e_length < 6.0, e_thickness < 6.0, e_width < 6.0)
+```
 
 Here's a quick check on the factor order of site:
 ```{r factor order check}
 levels(artifact_data$particle_class)
 ```
 Good.  We can see here that the 0th class is the "target" class.  Note that the "target" class for yardstick is the "0" class, so this is the correct ordering that we want.
+
+# Validate data
+```{r Here we will start writing asserts to validate the data.} 
+
+# Angularity: 0 (perfect circle)-180 (many sharp edges)
+assert(artifact_data, within_bounds(0,180), angularity, 
+       description = "Values must be within 0-180 range.")
+
+# Circularity: 0-1 (perfect circle)
+assert(artifact_data, within_bounds(0,1), circularity,
+       description = "Values must be within 0-1 range.")
+
+# Solidity: 0-1 (very smooth surface)
+assert(artifact_data, within_bounds(0,1), solidity,
+       description = "Values must be within 0-1 range.")
+
+# Transparency: 0 (least transparent)-1 (most transparent)
+assert(artifact_data, within_bounds(0,1), transparency,
+       description = "Values must be within 0-1 range.")
+
+# T/W Ratio: 0-1 (represents a sphere)
+assert(artifact_data, within_bounds(0,1), t_w_ratio,
+       description = "Values must be within 0-1 range.")
+
+# Sphericity: 0-1 (perfect circle)
+assert(artifact_data, within_bounds(0,1), sphericity,
+       description = "Values must be within 0-1 range.")
+
+# Concavity: 0-1 (rough, spikey surface)
+assert(artifact_data, within_bounds(0,1), concavity,
+       description = "Values must be within 0-1 range.")
+
+# Convexity: 0-1 (smooth)
+assert(artifact_data, within_bounds(0,1), convexity,
+       description = "Values must be within 0-1 range.")
+
+#L/W Aspect Ratio: 1 (sphere)-infinity
+assert(artifact_data, within_bounds(1,Inf), l_w_ratio,
+       description = "Values must be within 1-infinity range.")
+
+# W/T Ratio: 1 (sphere)-infinity
+assert(artifact_data, within_bounds(1,Inf), w_t_ratio,
+       description = "Values must be within 1-infinity range.")
+```
 
 # Questions
 Here, we may want to know two things:
