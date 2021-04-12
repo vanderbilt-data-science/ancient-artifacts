@@ -20,9 +20,8 @@ In this notebook, we use Naive Bayes to perform modeling.  Our general approach 
 **Note that prior to running this notebook, 10 and 40 must already have been run.**
 
 ### Useful packages
-```{r glmnet specific modeling packages, results='hide'}
-pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel, caret, naivebayes)
-library(discrim)
+```{r naive bayes specific modeling packages, results='hide'}
+pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel, caret, naivebayes, discrim)
 ```
 
 Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid. For the Naive Bayes model, the general usemodels template code was not supported but using the naivebayes package model allowed for easy 1:1 translation
