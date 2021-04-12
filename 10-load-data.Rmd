@@ -1,98 +1,115 @@
 ---
 title: "10-load-data"
-output: html_notebook
+output:
+   html_notebook:
+      toc: yes
+      toc_depth: 3
+      toc_float: yes
 ---
 
 The purpose of this notebook is to load and clean the data.  It should also test the data (e.g., by assertr) to ensure that assumptions about the data are met, and store the cleaned and tested data.
 
-```{r}
-#Import helpful packages
-library(haven)
-library(vroom)
-library(boxr)
-library(janitor)
-library(assertr)
-library(tidyverse)
-library(batman)
-library(dplyr)
+# Basic library imports
+Here, we use the package `pacman` in order to load packages.  Something that's great about this package is if the package isn't locally installed on your own system, instead of throwing errors, pacman will automatically install the package and then load it.
+```{r import packages, results='hide'}
+if (!require("pacman"))
+   install.packages("pacman")
+
+pacman::p_load(janitor, assertr, tidyverse, forcats)
 ```
 
-```{r set working directory}
-setwd('~/Documents/AncientArtifacts/ancient-artifacts')
+# Reading in files
+In this step, we'll read in the data.
+```{r read data, results='hide'}
+LithicData <- read_csv("LithicExperimentalData.csv") %>%
+   clean_names() %>%
+   mutate(particle_class = 'exp')
+ASData <- read_csv("ArchaeologicalSoilData.csv") %>%
+   clean_names() %>%
+   mutate(particle_class = 'site')
 ```
 
-```{r read in data}
-LithicData <- read_csv("LithicExperimentalData.csv")
-ASData <- read_csv("ArchaeologicalSoilData.csv")
-```
+Something interesting about these files is that there are actually 2 header lines in these csv files.  The first line is the normal header, and the second line is a descriptor regarding the units of the measurement.  In the following step, we strip out that second line of units.
 
 ```{r clean up first row}
-LithicData <- LithicData[-c(1),]
+# clean up first row of data and add class information
+LithicData <- LithicData[-c(1),] 
 ASData <- ASData[-c(1),]
 ```
 
+Now, we combine the data into a single file, fix the resultant data types, and set up the factors in the correct order for modeling.
 ```{r combine data}
-ArtifactData <- rbind(LithicData,ASData) %>%
-  janitor::clean_names() 
- 
-ArtifactData <- mutate(ArtifactData, file_id = NA)
+artifact_data <- LithicData %>%
+   bind_rows(ASData) %>%
+   mutate(across(c(-starts_with('Filter'), -particle_class), as.double)) %>%
+   mutate(id = as.character(id),
+          img_id = as.character(img_id),
+          particle_class = fct_relevel(as.factor(particle_class), 'exp', 'site')) %>%
+   select(particle_class, everything())
+
+artifact_data %>% glimpse()
+```
+This looks generally correct with ambiguity surrounding the filter variables a well as the hash.  These could be useful, but we should check with the collaborator.
+
+Here I removed all data points greater than 6.0 mm within the variables f_length, f_thickness, f_width, e_length, e_thickness, e_width. This reduces the dataset to only microdebitage.
+
+```{r}
+filter(artifact_data, f_width < 6.0, f_thickness < 6.0, f_length < 6.0, e_length < 6.0, e_thickness < 6.0, e_width < 6.0)
 ```
 
-```{r set first column to file name}
-ArtifactData <- select(ArtifactData, file_id, everything())
+Here's a quick check on the factor order of site:
+```{r factor order check}
+levels(artifact_data$particle_class)
 ```
+Good.  We can see here that the 0th class is the "target" class.  Note that the "target" class for yardstick is the "0" class, so this is the correct ordering that we want.
 
-```{convert filters to logicals}
-ArtifactData$filter0 <- batman::to_logical(ArtifactData$filter0, custom_false = c("Reject"))
-ArtifactData$filter1 <- batman::to_logical(ArtifactData$filter1, custom_false = c("Reject"))
-ArtifactData$filter2 <- batman::to_logical(ArtifactData$filter2, custom_false = c("Reject"))
-ArtifactData$filter3 <- batman::to_logical(ArtifactData$filter3, custom_false = c("Reject"))
-ArtifactData$filter4 <- batman::to_logical(ArtifactData$filter4, custom_false = c("Reject"))
-ArtifactData$filter5 <- batman::to_logical(ArtifactData$filter5, custom_false = c("Reject"))
-ArtifactData$filter6 <- batman::to_logical(ArtifactData$filter6, custom_false = c("Reject"))
-ArtifactData
-```
-
+# Validate data
 ```{r Here we will start writing asserts to validate the data.} 
 
 # Angularity: 0 (perfect circle)-180 (many sharp edges)
-assert(ArtifactData, within_bounds(0,180), angularity, 
+assert(artifact_data, within_bounds(0,180), angularity, 
        description = "Values must be within 0-180 range.")
 
 # Circularity: 0-1 (perfect circle)
-assert(ArtifactData, within_bounds(0,1), circularity,
+assert(artifact_data, within_bounds(0,1), circularity,
        description = "Values must be within 0-1 range.")
 
 # Solidity: 0-1 (very smooth surface)
-assert(ArtifactData, within_bounds(0,1), solidity,
+assert(artifact_data, within_bounds(0,1), solidity,
        description = "Values must be within 0-1 range.")
 
 # Transparency: 0 (least transparent)-1 (most transparent)
-assert(ArtifactData, within_bounds(0,1), transparency,
+assert(artifact_data, within_bounds(0,1), transparency,
        description = "Values must be within 0-1 range.")
 
 # T/W Ratio: 0-1 (represents a sphere)
-assert(ArtifactData, within_bounds(0,1), t_w_ratio,
+assert(artifact_data, within_bounds(0,1), t_w_ratio,
        description = "Values must be within 0-1 range.")
 
 # Sphericity: 0-1 (perfect circle)
-assert(ArtifactData, within_bounds(0,1), sphericity,
+assert(artifact_data, within_bounds(0,1), sphericity,
        description = "Values must be within 0-1 range.")
 
 # Concavity: 0-1 (rough, spikey surface)
-assert(ArtifactData, within_bounds(0,1), concavity,
+assert(artifact_data, within_bounds(0,1), concavity,
        description = "Values must be within 0-1 range.")
 
 # Convexity: 0-1 (smooth)
-assert(ArtifactData, within_bounds(0,1), convexity,
+assert(artifact_data, within_bounds(0,1), convexity,
        description = "Values must be within 0-1 range.")
 
 #L/W Aspect Ratio: 1 (sphere)-infinity
-assert(ArtifactData, within_bounds(1,Inf), l_w_ratio,
+assert(artifact_data, within_bounds(1,Inf), l_w_ratio,
        description = "Values must be within 1-infinity range.")
 
 # W/T Ratio: 1 (sphere)-infinity
-assert(ArtifactData, within_bounds(1,Inf), w_t_ratio,
+assert(artifact_data, within_bounds(1,Inf), w_t_ratio,
        description = "Values must be within 1-infinity range.")
-
 ```
+
+# Questions
+Here, we may want to know two things:
+1. What are those `filterx` variables?  Should we keep them in the dataset?
+2. What is the `hash` variable?  Should we keep it in the dataset?
+
+Otherwise, we see that we have 49 columns and a combined total of 78,612 rows, where 73,313 are soil data and 5,299 are of lithic microdebitage.
