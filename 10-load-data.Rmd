@@ -45,11 +45,17 @@ artifact_data <- LithicData %>%
    mutate(id = as.character(id),
           img_id = as.character(img_id),
           particle_class = fct_relevel(as.factor(particle_class), 'exp', 'site')) %>%
-   select(particle_class, everything())
+   dplyr::select(particle_class, everything())
 
 artifact_data %>% glimpse()
 ```
 This looks generally correct with ambiguity surrounding the filter variables a well as the hash.  These could be useful, but we should check with the collaborator.
+
+Here I removed all data points greater than 6.0 mm within the variables f_length, f_thickness, f_width, e_length, e_thickness, e_width. This reduces the dataset to only microdebitage.
+
+```{r}
+filter(artifact_data, f_width < 6.0, f_thickness < 6.0, f_length < 6.0, e_length < 6.0, e_thickness < 6.0, e_width < 6.0)
+```
 
 Here's a quick check on the factor order of site:
 ```{r factor order check}

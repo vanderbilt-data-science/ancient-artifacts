@@ -1,0 +1,308 @@
+---
+title: "42-naivebayes-modeling"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+---
+
+In this notebook, we use Naive Bayes to perform modeling.  Our general approach will be to use hyperparameter tuning via cross-validation to identify the best performing hyperparameters,  In another notebook, we will investigate the performance of the model.
+
+**Note that prior to running this notebook, 10 and 40 must already have been run.**
+
+### Useful packages
+```{r naive bayes specific modeling packages, results='hide'}
+pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel, caret, naivebayes, discrim)
+```
+
+Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid. For the Naive Bayes model, the general usemodels template code was not supported but using the naivebayes package model allowed for easy 1:1 translation
+```{r naive bayes tidymodel specs}
+nb_recipe <- 
+  recipe(formula = particle_class ~ ., data = train_data) %>% 
+  update_role(id, img_id, starts_with('filter'), hash, new_role='no_model') %>%
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_predictors(), -all_nominal()) 
+
+nb_spec <-
+  naive_Bayes(smoothness = tune(), Laplace = tune() ) %>%
+  set_mode("classification") %>%
+  set_engine("naivebayes")
+
+nb_workflow <- 
+  workflow() %>% 
+  add_recipe(nb_recipe) %>% 
+  add_model(nb_spec) 
+
+nb_parameters <- parameters(nb_spec)
+nb_grid <- grid_max_entropy(nb_parameters, size=20)
+```
+
+
+# Hyperparameter tuning (model selection) via cross-validation
+```{r perform hyperparameter tuning via xvalidation, results='hide'}
+tic()
+nb_tune <- nb_workflow %>%
+  tune_grid(resamples = cv_folds,
+            grid = nb_grid,
+            metrics = metric_set(accuracy, roc_auc, pr_auc, sens, yardstick::spec, ppv, npv, f_meas),
+            control = control_grid(verbose = TRUE))
+toc()
+```
+## Cross-validation metric distributions
+In this section, we're going to take a little bit of a look at the individualized performance of the models taking into each fold into account.  This will satisfy our academic curiosity in terms of machine learning and also provide some insight into the behaviors of the models.  We'll look more at the aggregated measures in a moment.
+
+We'll first decompress the tuning metrics a bit to get them into a more friendly form for processing.  
+```{r arrange cross validation metrics}
+#extract the cross validation metrics for the naive bayes model by fold (i.e., unsummarized)
+nb_fold_metrics <- nb_tune %>%
+  dplyr::select(id, .metrics, .notes) %>%
+  unnest(.metrics)
+
+head(nb_fold_metrics, 10)
+```
+
+Now, let's visualize this generalized performance over all the models
+```{r visualize fold performance distributions, fig.height=6, fig.width=12}
+nb_fold_metrics %>%
+  mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
+  ggplot(aes(x=.metric, y=.estimate, fill=id)) +
+  geom_boxplot(outlier.colour = 'red', na.rm=TRUE) +
+  facet_wrap(facet='.metric', scales='free', nrow=2) + 
+  labs(title='Distribution of performance by 20 model candidates',
+       subtitle='By fold and metric',
+       x='metric',
+       y='metric distribution') +
+  scale_x_discrete(labels=NULL)
+```
+Here we can see some interesting fold-specific results. There tended to be a large distubution for Fold 2 and fold 3 performance while Fold 3 and 1 were consistently small in terms of distribution. 
+
+# Identifying the "best" model
+Now, let's collect the metrics to see how the model did over all of the folds and all of the metrics in order to identify the best model from these candidates.  Note that this table looks similar to the prior tibble; the main difference here is that the results are aggregated over the folds (hence the `mean` and `n` columns).
+
+```{r aggregating hyperparameter tuning/cross validation metrics}
+tune_metrics <- nb_tune %>% 
+  collect_metrics()
+
+head(tune_metrics, 5)
+```
+
+## Basic performance overview
+Let's just look at the overall (fold-less) distribution of the metrics.
+```{r overall performance}
+tune_metrics %>%
+  ggplot(aes(x=.metric, y=mean)) +
+  geom_boxplot(aes(fill=.metric), outlier.shape=NA, na.rm=TRUE) +
+  geom_jitter(na.rm=TRUE) +
+  facet_wrap(facets='.metric', nrow=2, scales='free') +
+  theme(legend.position = 'none') +
+  labs(title='Distribution of mean cv performance by 20 model candidates',
+       subtitle='By metric',
+       x='metric',
+       y='mean cv metric') +
+  scale_x_discrete(labels=NULL)
+
+```
+Here, we can see a relatively tight distribution for ppv and rather large distributions for spec, sense, and npv. However, all of these have a very small scale for their axises so that may be entirely normal.
+One additional observation is that for accuracy and pr_auc, there are several very high-performing outliers. These will likely be our candidates for the "best" model but them being outliers is an interesting area to be explored. 
+
+## Making sense of the hyperparameters and their influence
+
+Let's visualize this so we can make some sort of sense out of it.
+```{r fig.height=6}
+tune_metrics %>%
+  mutate(.metric=fct_relevel(.metric, 'roc_auc', 'pr_auc', 'f_meas', 'accuracy', 'sens', 'spec')) %>%
+  ggplot(aes(x=Laplace, y=smoothness)) +
+  geom_point(aes(fill=mean), shape=22, size=6) + 
+  scale_x_log10(guide=guide_axis(angle=45)) + 
+  facet_wrap(ncol=4, facet='.metric') + 
+  scale_fill_gradient2(low='red', mid='yellow', high='green', midpoint=0.5) + 
+  labs(title='Mean performance of mixture/penalty hyperparameter combinations',
+       subtitle='By performance metric',
+         x='LaPlace',
+         y='smoothness',
+         fill='mean cv value')
+```
+Here is a difficult-to-understand plot.  The objective of this visualization is to begin to digest the relationship between the two hyperparameters and the performance given a certain metric.  Recall that hyperparameter tuning evaluates all combinations of hyperparameters.  These combos are shown as a square on a particular "subplot" of a metric of interest.  Then, there are 20 squares since there are 20 models.  And, the arrangement of all the "intersection" squares is identical.
+
+What is of interest here is the color of the squares.  Red indicates that the performance is poor, and green indicates that the performance is great. What is interesting here is that all of the squares within a given graph typically had the same color no matter the value of our two hyperparameters. This may suggest these hyperparameters don't affect the cv value as much as the model itself does in terms of classification. 
+
+## Looking at all of the metrics together to select a model
+One possible way of evaluating a good model might be to rank the model according to its performance across all of the metrics.  This allows us to get a bit away from the values themselves.  However, we can also look at the values themselves and investigate the relationship.
+```{r overall performance assessment, fig.height=6}
+#calculate mean metrics and rank
+mdl_overall <- tune_metrics %>%
+  group_by(.metric) %>%
+  mutate(metr_rank=rank(-mean, ties.method='average')) %>% #-mean so that rank increases (so, worse) with decreasing metric
+  group_by(.config, .add=FALSE) %>%
+  mutate(mean_rank = mean(metr_rank)) %>% #add mean rank
+  mutate(mean_value = -mean(mean, na.rm=TRUE)) %>% #add mean value
+  pivot_longer(cols=c(mean_rank, mean_value), names_to = 'agg_perf_type', values_to='agg_perf') %>%
+  group_by(agg_perf_type) %>%
+  filter(.metric=='pr_auc') #just pick one set of values; all these aggregated values will be identical
+
+#plot; note that there is manipulation of negatives for the directionality and absolute value
+mdl_overall %>%  
+  ggplot(aes(x=reorder_within(str_remove(.config, 'Preprocessor1_'), -agg_perf, agg_perf_type),
+             y=abs(agg_perf),
+             width=smoothness)) +
+  geom_col(aes(fill=-log(Laplace))) +
+  geom_label(aes(label=round(abs(agg_perf),3)), label.r=unit(0.0, "lines"), label.size=0, size=3) + 
+  facet_wrap(~agg_perf_type, ncol=2, scales='free') +
+  scale_x_reordered() + 
+  coord_flip() +
+  labs(title='General model performance over all metrics by mean overall rank',
+       subtitle='Bar appearance shows parameters (width=smoothness, color=LaPlace)',
+       y='Mean over all metrics',
+       x='Model name')
+```
+
+Here, the height of each bar represents smoothness while the color represents the Laplace parameter. Overall, we see skinnier bars, or those with a lower smoothness, perform better than those with a higher smoothness. Additionally, the visual color does not immediately seem to correlate with model performance with the Laplace. 
+
+## Selecting the best model
+With this information in mind as well as more help from tidymodels, we can then select the "best" model.  One way to do this is to simply choose according to some metric.  We'll decide to use `pr_auc` here just because our training data is so imbalanced.
+
+```{r get best hyperparameters from resampling}
+eval_metric <- 'pr_auc'
+
+#show best parameters in terms of pr_auc
+nb_tune %>% show_best(eval_metric)
+```
+
+We find here that this is exactly in line with our previous assessment of overall model performance. Laplace does not seem to have much of an affect on the mean while the lower smoothness levels are very critical. 
+
+```{r select best parameters}
+#select best parameters
+best_nb_params <- nb_tune %>%
+  select_best(eval_metric)
+
+#show selected parameters
+best_nb_params
+```
+ We can see that Model 14 (best in overall rank and mean metric performance) predictably had the highest `pr_auc`. 
+
+# Training fit
+Having identified the best hyperparameters, we can create the final fit on all of the training data:
+
+```{r fit workflow on training data}
+#finalize workflow with model hyperparameters
+nb_final_wf <- nb_workflow %>%
+  finalize_workflow(best_nb_params)
+nb_final_wf
+
+#using final workflow, fit on training data
+nb_final_fit <- nb_final_wf %>%
+  fit(data = train_data)
+```
+
+# Selected Model Performance Evaluation
+## Cross validation metrics from best model
+Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
+```{r best model cross validation}
+#get best glmnet metrics
+best_nb_fold_metrics <- nb_fold_metrics %>%
+  filter(.config==best_nb_params$.config[[1]])
+
+#plot
+best_nb_fold_metrics %>%
+  mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
+  ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
+  geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
+  geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
+  facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
+  labs(title='Distribution of cross validation metrics for best hyperparameter set',
+       subtitle='By metric',
+       x='metric',
+       y='metric estimate') +
+  theme(legend.position = "none")
+```
+We see very high values for accuracy, npv, and spec, all of which point to this model being one of the "outliers" we discussed earlier. 
+
+## Performance on training data as a whole
+Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
+```{r extract and visualize training performance}
+#get prediction class and probabilities
+hp_training_preds <- 
+  predict(nb_final_fit, train_data) %>%
+  bind_cols(predict(nb_final_fit, train_data, type = "prob")) %>% 
+  bind_cols(train_data %>% 
+              dplyr::select(particle_class))
+
+#calculate confusion matrix
+train_conf <- hp_training_preds %>%
+  conf_mat(particle_class, .pred_class) 
+
+#get summary info
+t1 <- train_conf %>%
+  summary() %>%
+  dplyr::select(-.estimator) %>%
+  gridExtra::tableGrob(rows=NULL, theme=gridExtra::ttheme_default(base_size=10))
+
+#plot cmat info
+cm <- train_conf %>%
+  autoplot(type='heatmap') +
+  labs(title='Confusion matrix for training data')
+
+gridExtra::grid.arrange(cm, t1, ncol=2)
+```
+Here we see there were roughly 7,500 particles that we truly site particles that were classified as lithic samples. The overall accuracy remains around 83.7% and precision at 20%.
+
+# Explaining the model
+## Variable imporance
+What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
+
+```{r naive bayes variable importance, fig.height=6}
+nb_vip <- nb_final_fit %>%
+  pull_workflow_fit()
+  
+nb_vip <- caret::filterVarImp( x= nb_vip$fit$data$x , y = nb_vip$fit$data$y) 
+nb_vip <- as.data.frame(nb_vip)
+
+nb_vip <- rownames_to_column(nb_vip)
+names(nb_vip)[1] <- "var"
+
+nb_vip <- nb_vip %>% 
+  mutate(var = fct_reorder(var, exp))
+
+ggplot(nb_vip, aes(x=var, y=exp)) +
+  geom_col() +
+  coord_flip() +
+    labs(title='Scaled coefficient magnitudes of glmnet',
+       subtitle=str_c('Smoothness:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
+                                         digits=5, nsmall=2, scientific=TRUE),
+                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
+                                         digits=5, nsmall=3),
+                      sep=' '),
+       y='scaled absolute importance',
+       x='variable')
+  
+#+#nb_vip %>%
+#  ggplot(aes(x=exp, y=site, fill=association))+
+#  geom_col() 
+#  coord_flip() +
+#  labs(title='Scaled coefficient magnitudes of glmnet',
+#       subtitle=str_c('Penalty:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
+#                                         digits=5, nsmall=2, scientific=TRUE),
+#                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
+#                                         digits=5, nsmall=3),
+#                      sep=' '),
+#       y='scaled absolute importance',
+#       x='variable')
+```
+Here we can clearly see a common thread through many of the models. The Naive bayes model also weighted transparency incredibly high followed by the typical compactness, roundness, and l_t_ratio which were also common candidates for high importance variables. 
+
+
+# Save markdown file
+Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
+```{r save markdown}
+fs::file_copy('42-naivebayes-modeling.nb.html', './html_results/42-naivebayes-modeling.nb.html', overwrite=TRUE)
+```
+

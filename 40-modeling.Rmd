@@ -1,6 +1,8 @@
 ---
 title: "40-modeling"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 This model will end up containing some generalized method that we'll use for all the models.  This will aid us in maintainability of our codebase, and also help us avoid copy/paste (and lack thereof) replication errors.
@@ -50,5 +52,27 @@ cm <- train_conf %>%
 gridExtra::grid.arrange(cm, t1, ncol=2)
 
 return (t1, cm)
+```
+
+```{r}
+calculate_best_performance_metrics <- function (fold_metrics, best_params) {
+  #get metrics
+  best_fold_metrics <- fold_metrics %>%
+  filter(.config==best_params$.config[[1]])
+
+#plot
+best_fold_metrics %>%
+  mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
+  ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
+  geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
+  geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
+  facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
+  labs(title='Distribution of cross validation metrics for best hyperparameter set',
+       subtitle='By metric',
+       x='metric',
+       y='metric estimate') +
+  theme(legend.position = "none")
+
+  return (best_fold_metrics)
 }
 ```
