@@ -32,6 +32,20 @@ cv_folds <- vfold_cv(train_data, v=5, strata=particle_class)
 cv_folds
 ```
 
+
+```{r generalized function for prediction data frames}
+get_prediction_dataframes <- function(final_fit, train_data) {
+#get prediction class and probabilities
+hp_training_preds <- 
+  predict(final_fit, train_data) %>%
+  bind_cols(predict(final_fit, train_data, type = "prob")) %>% 
+  bind_cols(train_data %>% 
+              select(particle_class))
+
+return (hp_training_preds)
+}
+```
+
 ```{r calculate confusion matrix and produce summary and confusion matrix}
 calculate_confusion_matrix <-function (hp_training_preds) {
 #calculate confusion matrix
@@ -52,6 +66,7 @@ cm <- train_conf %>%
 gridExtra::grid.arrange(cm, t1, ncol=2)
 
 return (t1, cm)
+}
 ```
 
 ```{r}
@@ -76,3 +91,4 @@ best_fold_metrics %>%
   return (best_fold_metrics)
 }
 ```
+
