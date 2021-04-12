@@ -17,7 +17,7 @@ In this notebook, we use random forest to perform modeling.  Our general approac
 pacman::p_load(glmnet, tictoc, vip, tidytext, ranger)
 ```
 
-# Glmnet tidymodels specifications
+# RF tidymodels specifications
 The following code was used to generate the codebase that you'll find in the chunk that follows.  Some additional steps were included for simplicity in processing during later steps.
 ```{r generate glmnet recipe and general info}
 #use_glmnet(particle_class ~ ., data=train_data)
@@ -142,8 +142,7 @@ tune_metrics %>%
 ```
 Here is a difficult-to-understand plot.  The objective of this visualization is to begin to digest the relationship between the two hyperparameters and the performance given a certain metric.  Recall that hyperparameter tuning evaluates all combinations of hyperparameters.  These combos are shown as a square on a particular "subplot" of a metric of interest.  Then, there are 20 squares since there are 20 models.  And, the arrangement of all the "intersection" squares is identical.
 
-What is of interest here is the color of the squares.  Red indicates that the performance is poor, and green indicates that the performance is great.  Of interest to me here is the relationship and the visual color gradient change moving across the penalty (performance seems to generally get worse as the penalty increases), and
-increasing the mixture parameter (seems to have little to no effect on the performance; perhaps a slight increase).  This was interesting to see.
+What is of interest here is the color of the squares.  Red indicates that the performance is poor, and green indicates that the performance is great.  mtry and min_n values have little effect on performance; only in cases of f_meas and sens does an increase in mtry lead to a slight increase in performance 
 
 ## Looking at all of the metrics together to select a model
 One possible way of evaluating a good model might be to rank the model according to its performance across all of the metrics.  This allows us to get a bit away from the values themselves.  However, we can also look at the values themselves and investigate the relationship.
@@ -174,7 +173,7 @@ mdl_overall %>%
        y='Mean over all metrics',
        x='Model name')
 ```
-Here, we can see some relatively uniform results, identical up to the 8th model, and we can see that the "best" model is Model17 from our back-of-the-envelope estimate of overall performance.  We can also see something interesting in the hyperparameter relationship to performance in that the models tend to worsen with increasing penalty values.  The value of the mixture parameter does not appear to have similar trend-like behavior, although we can see that the best models tend to have larger mixing values.  However, the worst models do as well.
+Model20 here appears to be the best; mean_value numbers are highly similar though. Also, mtry value relationship with performance is uncertain, though it appears the worst performing models on these charts also have low mtry values. 
 
 ## Selecting the best model
 With this information in mind as well as more help from tidymodels, we can then select the "best" model.  One way to do this is to simply choose according to some metric.  We'll decide to use `pr_auc` here just because our training data is so imbalanced.
@@ -196,7 +195,7 @@ best_rf_params <- rf_tune %>%
 #show selected parameters
 best_rf_params
 ```
- We can see that Model 17 (best in overall rank and mean metric performance) predictably had the highest `pr_auc`.  We also can see that this is essentially a LASSO model based on the mixture, although the penalty is small yet not unexpected.  We will use these defined parameters to fit our model.
+ We can see that Model 20 (best in overall rank and mean metric performance) predictably had the highest `pr_auc`.  We also can see that this is essentially a LASSO model based on the mixture, although the penalty is small yet not unexpected.  We will use these defined parameters to fit our model.
 
 # Training fit
 Having identified the best hyperparameters, we can create the final fit on all of the training data:
@@ -290,11 +289,7 @@ rf_vip %>%
        y='scaled absolute importance',
        x='variable')
 ```
-Of previous interest was transparency, solidity, and other metrics for discerning the different classes.  Here, we can make several observations:
-
-1.  We can see here that the e and f length differentially contribute to discriminating between different particle types.  However, I find this curious since one would think these would be essentially the same value (i.e., highly correlated).
-2. `da` and `dp` additionally contribute differentially to the classification.  The confusion around this result points to previous suggestions regarding restricting the size of the particles in the data.  This may also assist with (1).
-3.  Previous assertions have been confirmed regarding the relation of `transparency`, `compactness`, `solidity`, and other features regarding their relationship with microdebitage.
+Transparency holds the greatest importance for these models and for determining microdebitage, followed by fiber_length, f_length, and e_length. As discussed in the coding meeting, these last three variables should be investigated to see if one of these length variables holds the most importance (to the extent that the other two variables derive their importance only in their relationship to this dominant length variable). 
 
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
