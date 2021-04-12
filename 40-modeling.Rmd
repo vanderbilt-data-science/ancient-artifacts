@@ -32,6 +32,27 @@ cv_folds <- vfold_cv(train_data, v=5, strata=particle_class)
 cv_folds
 ```
 
+```{r calculate confusion matrix and produce summary and confusion matrix}
+calculate_confusion_matrix <-function (hp_training_preds) {
+#calculate confusion matrix
+train_conf <- hp_training_preds %>%
+  conf_mat(particle_class, .pred_class) 
+
+#get summary info
+t1 <- train_conf %>%
+  summary() %>%
+  select(-.estimator) %>%
+  gridExtra::tableGrob(rows=NULL, theme=gridExtra::ttheme_default(base_size=10))
+
+#plot cmat info
+cm <- train_conf %>%
+  autoplot(type='heatmap') +
+  labs(title='Confusion matrix for training data')
+
+gridExtra::grid.arrange(cm, t1, ncol=2)
+
+return (t1, cm)
+```
 
 ```{r}
 calculate_best_performance_metrics <- function (fold_metrics, best_params) {
