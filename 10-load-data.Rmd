@@ -45,7 +45,7 @@ artifact_data <- LithicData %>%
    mutate(id = as.character(id),
           img_id = as.character(img_id),
           particle_class = fct_relevel(as.factor(particle_class), 'exp', 'site')) %>%
-   select(particle_class, everything())
+   dplyr::select(particle_class, everything())
 
 artifact_data %>% glimpse()
 ```

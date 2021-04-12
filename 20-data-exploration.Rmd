@@ -118,4 +118,3 @@ plot_density(templatedSoil)
 
 create_report(templatedLithic)
 ```
-
