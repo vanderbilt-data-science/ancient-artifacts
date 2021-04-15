@@ -30,24 +30,10 @@ Here we can see the overall performance of the best model during its cross valid
 Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
 ```{r extract and visualize training performance}
 #get prediction class and probabilities
-hp_training_preds <- 
-  predict(glmnet_final_fit, train_data) %>%
-  bind_cols(predict(glmnet_final_fit, train_data, type = "prob")) %>% 
-  bind_cols(train_data %>% 
-              select(particle_class))
+hp_training_preds <- get_prediction_dataframe(glmnet_final_fit, train_data)
+
 #calculate confusion matrix
-train_conf <- hp_training_preds %>%
-  conf_mat(particle_class, .pred_class) 
-#get summary info
-t1 <- train_conf %>%
-  summary() %>%
-  select(-.estimator) %>%
-  gridExtra::tableGrob(rows=NULL, theme=gridExtra::ttheme_default(base_size=10))
-#plot cmat info
-cm <- train_conf %>%
-  autoplot(type='heatmap') +
-  labs(title='Confusion matrix for training data')
-gridExtra::grid.arrange(cm, t1, ncol=2)
+calculate_confusion_matrix(hp_training_preds)
 ```
 These results allow us several important insights:
 1. The confusion matrix reflects the distribution of the data
@@ -86,5 +72,5 @@ Of previous interest was transparency, solidity, and other metrics for discernin
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
-fs::file_copy('51-glmnet-performance.nb.html', './html_results/41-glmnet-performance.nb.html', overwrite=TRUE)
+fs::file_copy('51-glmnet-performance.nb.html', './html_results/51-glmnet-performance.nb.html', overwrite=TRUE)
 ```
