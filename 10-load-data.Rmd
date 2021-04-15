@@ -15,7 +15,7 @@ Here, we use the package `pacman` in order to load packages.  Something that's g
 if (!require("pacman"))
    install.packages("pacman")
 
-pacman::p_load(janitor, assertr, tidyverse, forcats)
+pacman::p_load(janitor, assertr, tidyverse, forcats, fs)
 ```
 
 # Reading in files
@@ -46,7 +46,9 @@ artifact_data <- LithicData %>%
           img_id = as.character(img_id),
           particle_class = fct_relevel(as.factor(particle_class), 'exp', 'site')) %>%
    dplyr::select(particle_class, everything())
+```
 
+```{r, purl=FALSE}
 artifact_data %>% glimpse()
 ```
 This looks generally correct with ambiguity surrounding the filter variables a well as the hash.  These could be useful, but we should check with the collaborator.
@@ -58,7 +60,7 @@ filter(artifact_data, f_width < 6.0, f_thickness < 6.0, f_length < 6.0, e_length
 ```
 
 Here's a quick check on the factor order of site:
-```{r factor order check}
+```{r factor order check, purl=FALSE}
 levels(artifact_data$particle_class)
 ```
 Good.  We can see here that the 0th class is the "target" class.  Note that the "target" class for yardstick is the "0" class, so this is the correct ordering that we want.

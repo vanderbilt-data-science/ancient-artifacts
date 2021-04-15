@@ -7,9 +7,12 @@ output:
 
 This model will end up containing some generalized method that we'll use for all the models.  This will aid us in maintainability of our codebase, and also help us avoid copy/paste (and lack thereof) replication errors.
 
-**Note that this notebook requires 10 to already have been run.**
+```{r modeling imports, results='hide'}
+#load previous notebook data
+source(knitr::purl("10-load-data.Rmd"))
+fs::file_delete("10-load-data.R")
 
-```{r modeling imports}
+#load in required packages for here
 pacman::p_load(tidymodels, usemodels)
 ```
 
@@ -33,62 +36,4 @@ cv_folds
 ```
 
 
-```{r generalized function for prediction data frames}
-get_prediction_dataframes <- function(final_fit, train_data) {
-#get prediction class and probabilities
-hp_training_preds <- 
-  predict(final_fit, train_data) %>%
-  bind_cols(predict(final_fit, train_data, type = "prob")) %>% 
-  bind_cols(train_data %>% 
-              select(particle_class))
-
-return (hp_training_preds)
-}
-```
-
-```{r calculate confusion matrix and produce summary and confusion matrix}
-calculate_confusion_matrix <-function (hp_training_preds) {
-#calculate confusion matrix
-train_conf <- hp_training_preds %>%
-  conf_mat(particle_class, .pred_class) 
-
-#get summary info
-t1 <- train_conf %>%
-  summary() %>%
-  select(-.estimator) %>%
-  gridExtra::tableGrob(rows=NULL, theme=gridExtra::ttheme_default(base_size=10))
-
-#plot cmat info
-cm <- train_conf %>%
-  autoplot(type='heatmap') +
-  labs(title='Confusion matrix for training data')
-
-gridExtra::grid.arrange(cm, t1, ncol=2)
-
-return (t1, cm)
-}
-```
-
-```{r}
-calculate_best_performance_metrics <- function (fold_metrics, best_params) {
-  #get metrics
-  best_fold_metrics <- fold_metrics %>%
-  filter(.config==best_params$.config[[1]])
-
-#plot
-best_fold_metrics %>%
-  mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
-  ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
-  geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
-  geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
-  facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
-  labs(title='Distribution of cross validation metrics for best hyperparameter set',
-       subtitle='By metric',
-       x='metric',
-       y='metric estimate') +
-  theme(legend.position = "none")
-
-  return (best_fold_metrics)
-}
-```
 
