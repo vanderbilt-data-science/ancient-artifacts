@@ -23,21 +23,7 @@ and hyperparameter tuning.
 Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
 ```{r best model cross validation}
 #get best glmnet metrics
-best_nb_fold_metrics <- nb_fold_metrics %>%
-  filter(.config==best_nb_params$.config[[1]])
-
-#plot
-best_nb_fold_metrics %>%
-  mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
-  ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
-  geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
-  geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
-  facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
-  labs(title='Distribution of cross validation metrics for best hyperparameter set',
-       subtitle='By metric',
-       x='metric',
-       y='metric estimate') +
-  theme(legend.position = "none")
+best_nb_fold_metrics <- calculate_best_performance_metrics(nb_fold_metrics, nb_best_params)
 ```
 We see very high values for accuracy, npv, and spec, all of which point to this model being one of the "outliers" we discussed earlier. 
 
@@ -45,28 +31,10 @@ We see very high values for accuracy, npv, and spec, all of which point to this 
 Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
 ```{r extract and visualize training performance}
 #get prediction class and probabilities
-hp_training_preds <- 
-  predict(nb_final_fit, train_data) %>%
-  bind_cols(predict(nb_final_fit, train_data, type = "prob")) %>% 
-  bind_cols(train_data %>% 
-              dplyr::select(particle_class))
+nb_training_preds <- get_prediction_dataframes(nb_final_fit, train_data)
 
-#calculate confusion matrix
-train_conf <- hp_training_preds %>%
-  conf_mat(particle_class, .pred_class) 
-
-#get summary info
-t1 <- train_conf %>%
-  summary() %>%
-  dplyr::select(-.estimator) %>%
-  gridExtra::tableGrob(rows=NULL, theme=gridExtra::ttheme_default(base_size=10))
-
-#plot cmat info
-cm <- train_conf %>%
-  autoplot(type='heatmap') +
-  labs(title='Confusion matrix for training data')
-
-gridExtra::grid.arrange(cm, t1, ncol=2)
+#plot and calculate confusion matrix
+t1 <- calculate_confusion_matrix(nb_training_preds)
 ```
 Here we see there were roughly 7,500 particles that we truly site particles that were classified as lithic samples. The overall accuracy remains around 83.7% and precision at 20%.
 
