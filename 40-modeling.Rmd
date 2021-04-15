@@ -10,7 +10,7 @@ This model will end up containing some generalized method that we'll use for all
 **Note that this notebook requires 10 to already have been run.**
 
 ```{r modeling imports}
-pacman::p_load(tidymodels, usemodels)
+pacman::p_load(tidymodels, usemodels, ROCR)
 ```
 
 # Split the data
@@ -66,6 +66,12 @@ cm <- train_conf %>%
 gridExtra::grid.arrange(cm, t1, ncol=2)
 
 return (t1, cm)
+}
+```
+
+```{r plot probabilities of predicted values}
+plot_predicted_values <-function (hp_training_preds) {
+
 }
 ```
 
