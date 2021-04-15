@@ -5,6 +5,13 @@ output: html_notebook
 
 The purpose of this notebook is for EDA.
 
+Load and run functionality from loading notebook
+```{r source data files}
+source(knitr::purl("10-load-data.Rmd"))
+fs::file_delete("10-load-data.R")
+```
+
+
 ```{r}
 #Helpful mports
 library(DataExplorer)

@@ -10,10 +10,13 @@ output:
 
 In this notebook, we use glmnet to perform modeling.  Our general approach will be to use hyperparameter tuning via cross-validation to identify the best performing hyperparameters,  In another notebook, we will investigate the performance of the model.
 
-**Note that prior to running this notebook, 10 and 40 must already have been run.**
-
 ### Useful packages
 ```{r glmnet specific modeling packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
+fs::file_delete("40-modeling.R")
+
+#load packages required here
 pacman::p_load(glmnet, tictoc, vip, tidytext)
 ```
 
@@ -66,6 +69,7 @@ glmnet_fold_metrics <- glmnet_tune %>%
   unnest(.metrics)
 head(glmnet_fold_metrics, 10)
 ```
+
 Now, let's visualize this generalized performance over all the models, both the fantastic ones and the horrible ones.
 ```{r visualize fold performance distributions, fig.height=6, fig.width=12}
 glmnet_fold_metrics %>%
