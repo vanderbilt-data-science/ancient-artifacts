@@ -13,6 +13,10 @@ In this notbeook, we explore the performance of the glmnet model.  We additional
 **Make sure you run the 41-glmnet-modeling notebook before attempting to run this notebook.**
 
 ```{r load required packages}
+#load previous notebook data
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("50-reporting.R")
+
 pacman::p_load(vip)
 ```
 
@@ -30,7 +34,7 @@ Here we can see the overall performance of the best model during its cross valid
 Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
 ```{r extract and visualize training performance}
 #get prediction class and probabilities
-hp_training_preds <- get_prediction_dataframe(glmnet_final_fit, train_data)
+hp_training_preds <- get_prediction_dataframes(glmnet_final_fit, train_data)
 
 #calculate confusion matrix
 calculate_confusion_matrix(hp_training_preds)
@@ -72,5 +76,5 @@ Of previous interest was transparency, solidity, and other metrics for discernin
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
-fs::file_copy('51-glmnet-performance.nb.html', './html_results/51-glmnet-performance.nb.html', overwrite=TRUE)
+#fs::file_copy('51-glmnet-performance.nb.html', './html_results/51-glmnet-performance.nb.html', overwrite=TRUE)
 ```
