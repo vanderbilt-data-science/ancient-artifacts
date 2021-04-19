@@ -53,7 +53,7 @@ glmnet_tune <- glmnet_workflow %>%
   tune_grid(resamples = cv_folds,
             grid = glmnet_grid,
             metrics = metric_set(accuracy, roc_auc, pr_auc, sens, yardstick::spec, ppv, npv, f_meas),
-            control = control_grid(verbose = TRUE, parallel_over='everything'))
+            control = control_grid(verbose = TRUE))
 toc()
 ```
 We can see here that the hyperparameter tuning took about half a day for me.  This is unfortunate, but will likely not persist on other platforms.

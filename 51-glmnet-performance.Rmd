@@ -37,7 +37,7 @@ Here, we look at the confusion matrix for the entire training set as well as com
 hp_training_preds <- get_prediction_dataframes(glmnet_final_fit, train_data)
 
 #calculate confusion matrix
-calculate_confusion_matrix(hp_training_preds)
+glmnet_conf_mat <- calculate_confusion_matrix(hp_training_preds)
 ```
 These results allow us several important insights:
 1. The confusion matrix reflects the distribution of the data
