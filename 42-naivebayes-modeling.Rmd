@@ -21,7 +21,7 @@ In this notebook, we use Naive Bayes to perform modeling.  Our general approach 
 
 ### Useful packages
 ```{r naive bayes specific modeling packages, results='hide'}
-pacman::p_load(glmnet, tictoc, vip, tidytext, doParallel, caret, naivebayes, discrim)
+pacman::p_load(glmnet, tictoc, tidytext, naivebayes, discrim)
 ```
 
 Here, we define the specs for the feature engineering, the model, the generalized workflow, and the parameters that we'll tune using parameters selected from a max entropy grid. For the Naive Bayes model, the general usemodels template code was not supported but using the naivebayes package model allowed for easy 1:1 translation
@@ -202,107 +202,3 @@ nb_final_wf
 nb_final_fit <- nb_final_wf %>%
   fit(data = train_data)
 ```
-
-# Selected Model Performance Evaluation
-## Cross validation metrics from best model
-Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
-```{r best model cross validation}
-#get best glmnet metrics
-best_nb_fold_metrics <- nb_fold_metrics %>%
-  filter(.config==best_nb_params$.config[[1]])
-
-#plot
-best_nb_fold_metrics %>%
-  mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
-  ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
-  geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
-  geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
-  facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
-  labs(title='Distribution of cross validation metrics for best hyperparameter set',
-       subtitle='By metric',
-       x='metric',
-       y='metric estimate') +
-  theme(legend.position = "none")
-```
-We see very high values for accuracy, npv, and spec, all of which point to this model being one of the "outliers" we discussed earlier. 
-
-## Performance on training data as a whole
-Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
-```{r extract and visualize training performance}
-#get prediction class and probabilities
-hp_training_preds <- 
-  predict(nb_final_fit, train_data) %>%
-  bind_cols(predict(nb_final_fit, train_data, type = "prob")) %>% 
-  bind_cols(train_data %>% 
-              dplyr::select(particle_class))
-
-#calculate confusion matrix
-train_conf <- hp_training_preds %>%
-  conf_mat(particle_class, .pred_class) 
-
-#get summary info
-t1 <- train_conf %>%
-  summary() %>%
-  dplyr::select(-.estimator) %>%
-  gridExtra::tableGrob(rows=NULL, theme=gridExtra::ttheme_default(base_size=10))
-
-#plot cmat info
-cm <- train_conf %>%
-  autoplot(type='heatmap') +
-  labs(title='Confusion matrix for training data')
-
-gridExtra::grid.arrange(cm, t1, ncol=2)
-```
-Here we see there were roughly 7,500 particles that we truly site particles that were classified as lithic samples. The overall accuracy remains around 83.7% and precision at 20%.
-
-# Explaining the model
-## Variable imporance
-What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
-
-```{r naive bayes variable importance, fig.height=6}
-nb_vip <- nb_final_fit %>%
-  pull_workflow_fit()
-  
-nb_vip <- caret::filterVarImp( x= nb_vip$fit$data$x , y = nb_vip$fit$data$y) 
-nb_vip <- as.data.frame(nb_vip)
-
-nb_vip <- rownames_to_column(nb_vip)
-names(nb_vip)[1] <- "var"
-
-nb_vip <- nb_vip %>% 
-  mutate(var = fct_reorder(var, exp))
-
-ggplot(nb_vip, aes(x=var, y=exp)) +
-  geom_col() +
-  coord_flip() +
-    labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Smoothness:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable')
-  
-#+#nb_vip %>%
-#  ggplot(aes(x=exp, y=site, fill=association))+
-#  geom_col() 
-#  coord_flip() +
-#  labs(title='Scaled coefficient magnitudes of glmnet',
-#       subtitle=str_c('Penalty:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
-#                                         digits=5, nsmall=2, scientific=TRUE),
-#                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
-#                                         digits=5, nsmall=3),
-#                      sep=' '),
-#       y='scaled absolute importance',
-#       x='variable')
-```
-Here we can clearly see a common thread through many of the models. The Naive bayes model also weighted transparency incredibly high followed by the typical compactness, roundness, and l_t_ratio which were also common candidates for high importance variables. 
-
-
-# Save markdown file
-Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
-```{r save markdown}
-fs::file_copy('42-naivebayes-modeling.nb.html', './html_results/42-naivebayes-modeling.nb.html', overwrite=TRUE)
-```
-
