@@ -68,3 +68,34 @@ gridExtra::grid.arrange(cm, t1, ncol=2)
 return (t1, cm)
 }
 ```
+
+# Plot prediction data frame
+```{r plot the probabilities for predicitons}
+plot_prediction_probabilities <- function(pred_frame){
+  new_training_preds <- filter(pred_frame, .pred_site < 0.8)
+alpha <- ifelse(pred_frame$particle_class == "exp", 0.4, 0.1)
+
+
+ggplot(data = pred_frame, mapping = aes(x = .pred_class , y =.pred_site, color = particle_class)  ) +
+  geom_jitter(width = 0.4, size = 1, alpha = alpha ) +
+  xlab("Model Predicted Class") + ylab("Probability of Site") +
+  labs(title="Probability Prediction Plots")
+  
+}
+plot_prediction_probabilities(hp_training_preds)
+
+```
+
+# Calibration curve
+```{r plot a calibration curve based on prediction}
+plot_calibration_curve <- function(pred_frame){
+val.prob(fitted(model),tibble_ex$event)
+ggplot(data = pred_frame, mapping = aes(x = .pred_class , y =.pred_site, color = particle_class)  ) +
+  geom_jitter(width = 0.4, size = 1 ) +
+  xlab("Model Predicted Class") + ylab("Probability of Site") +
+  labs(title="Probability Prediction Plots")
+  
+}
+plot_calibration_curve(hp_training_preds)
+
+```
