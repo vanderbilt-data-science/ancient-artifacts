@@ -88,14 +88,26 @@ plot_prediction_probabilities(hp_training_preds)
 
 # Calibration curve
 ```{r plot a calibration curve based on prediction}
+
 plot_calibration_curve <- function(pred_frame){
-val.prob(fitted(model),tibble_ex$event)
-ggplot(data = pred_frame, mapping = aes(x = .pred_class , y =.pred_site, color = particle_class)  ) +
-  geom_jitter(width = 0.4, size = 1 ) +
-  xlab("Model Predicted Class") + ylab("Probability of Site") +
-  labs(title="Probability Prediction Plots")
+  new_training_preds <- as.data.frame(pred_frame)
+  new_training_preds$particle_class <- as.numeric(new_training_preds$particle_class)
+  new_training_preds[, 4][new_training_preds[, 4] == 2] <-0
+
+  #new_training_preds$particle_class <- new_training_preds$particle_class - 1
+  
+  
+ggplot(data = new_training_preds, mapping = aes(x = .pred_exp , y = particle_class)  ) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+  scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+  geom_smooth(aes(x = .pred_exp, y = particle_class ), color = "red", se = F, method = "loess") + 
+
+  geom_abline()+
+  xlab("Model Probability of Experimental") + ylab("True Particle Class (Site [0] to Experimental[1]") +
+  labs(title="Calibration Curve")
+  
   
 }
-plot_calibration_curve(hp_training_preds)
 
+plot_calibration_curve(hp_training_preds)
 ```
