@@ -73,7 +73,7 @@ return (t1, cm)
 ```{r plot the probabilities for predicitons}
 plot_prediction_probabilities <- function(pred_frame){
   new_training_preds <- filter(pred_frame, .pred_site < 0.8)
-alpha <- ifelse(pred_frame$particle_class == "exp", 0.4, 0.1)
+  alpha <- ifelse(pred_frame$particle_class == "exp", 0.4, 0.1)
 
 
 ggplot(data = pred_frame, mapping = aes(x = .pred_class , y =.pred_site, color = particle_class)  ) +
@@ -82,8 +82,6 @@ ggplot(data = pred_frame, mapping = aes(x = .pred_class , y =.pred_site, color =
   labs(title="Probability Prediction Plots")
   
 }
-plot_prediction_probabilities(hp_training_preds)
-
 ```
 
 # Calibration curve
@@ -108,6 +106,4 @@ ggplot(data = new_training_preds, mapping = aes(x = .pred_exp , y = particle_cla
   
   
 }
-
-plot_calibration_curve(hp_training_preds)
 ```
