@@ -56,7 +56,9 @@ This looks generally correct with ambiguity surrounding the filter variables a w
 Here I removed all data points greater than 6.0 mm within the variables f_length, f_thickness, f_width, e_length, e_thickness, e_width. This reduces the dataset to only microdebitage.
 
 ```{r}
-filter(artifact_data, f_width < 6.0, f_thickness < 6.0, f_length < 6.0, e_length < 6.0, e_thickness < 6.0, e_width < 6.0)
+artifact_data <- filter(artifact_data, f_width < 6.0 & f_width > 0.125) 
+#filter(artifact_data, fiber_length < 0.3)
+glimpse(artifact_data)
 ```
 
 Here's a quick check on the factor order of site:
