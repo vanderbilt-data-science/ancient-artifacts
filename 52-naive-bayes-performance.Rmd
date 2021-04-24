@@ -82,6 +82,20 @@ ggplot(nb_vip, aes(x=var, y=exp)) +
 ```
 Here we can clearly see a common thread through many of the models. The Naive bayes model also weighted transparency incredibly high followed by the typical compactness, roundness, and l_t_ratio which were also common candidates for high importance variables. 
 
+##Calibration curve
+```{r visualize the model calibration}
+#get prediction class and probabilities
+plot_calibration_curve(nb_training_preds)
+```
+
+
+##Threshold for particles
+```{r visualize classification for particles and their threshold}
+#get prediction class and probabilities
+plot_prediction_probabilities(nb_training_preds)
+```
+
+
 
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
