@@ -23,7 +23,7 @@ and hyperparameter tuning.
 Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
 ```{r best model cross validation}
 #get best glmnet metrics
-best_nb_fold_metrics <- calculate_best_performance_metrics(nb_fold_metrics, nb_best_params)
+best_nb_fold_metrics <- calculate_best_performance_metrics(nb_fold_metrics, best_nb_params)
 ```
 We see very high values for accuracy, npv, and spec, all of which point to this model being one of the "outliers" we discussed earlier. 
 
