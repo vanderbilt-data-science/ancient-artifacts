@@ -109,6 +109,10 @@ assert(artifact_data, within_bounds(1,Inf), l_w_ratio,
 # W/T Ratio: 1 (sphere)-infinity
 assert(artifact_data, within_bounds(1,Inf), w_t_ratio,
        description = "Values must be within 1-infinity range.")
+
+# Verify that f_width always is between 0.125-6 range
+assert(artifact_data, within_bounds(0.125,6), f_width,
+       description = "Values must be within 0.125-6 range." )
 ```
 
 # Questions
