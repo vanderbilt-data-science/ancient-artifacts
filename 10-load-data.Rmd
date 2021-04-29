@@ -48,21 +48,22 @@ artifact_data <- LithicData %>%
    dplyr::select(particle_class, everything())
 ```
 
+
 ```{r, purl=FALSE}
 artifact_data %>% glimpse()
 ```
 This looks generally correct with ambiguity surrounding the filter variables a well as the hash.  These could be useful, but we should check with the collaborator.
 
-Here I removed all data points greater than 6.0 mm within the variables f_length, f_thickness, f_width, e_length, e_thickness, e_width. This reduces the dataset to only microdebitage.
+Here I removed all data points greater than 6.0 mm or less than 0.125mm for f_width. This reduces the dataset to only microdebitage.
 
 ```{r}
 artifact_data <- filter(artifact_data, f_width < 6.0 & f_width > 0.125) 
 #filter(artifact_data, fiber_length < 0.3)
-glimpse(artifact_data)
 ```
 
 Here's a quick check on the factor order of site:
 ```{r factor order check, purl=FALSE}
+glimpse(artifact_data)
 levels(artifact_data$particle_class)
 ```
 Good.  We can see here that the 0th class is the "target" class.  Note that the "target" class for yardstick is the "0" class, so this is the correct ordering that we want.
