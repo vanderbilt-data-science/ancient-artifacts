@@ -3,42 +3,36 @@ title: "20-data-exploration"
 output: html_notebook
 ---
 
-The purpose of this notebook is for EDA.
+The purpose of this notebook is for EDA.  The values in this EDA notebook reflect restrictions on `f_width` to be between 0.125 and 6mm.
 
 #Load and run functionality from loading notebook
-```{r source data files}
+```{r source data files, results='hide'}
 source(knitr::purl("10-load-data.Rmd"))
 fs::file_delete("10-load-data.R")
+pacman::p_load(DataExplorer)
 ```
 
 # Violin Plotting
 Let's begin creating violin plots for variables of interested identified in previous studies
-```{r}
-lwviolin <- ggplot(artifact_data, aes(x= particle_class, y=l_w_ratio)) + 
-  geom_violin()
-
-circleviolin <- ggplot(artifact_data, aes(x= particle_class, y=circularity)) + 
-  geom_violin()
-
-transpviolin <- ggplot(artifact_data, aes(x= particle_class, y=transparency)) + 
-  geom_violin()
-
-angulviolin <- ggplot(artifact_data, aes(x= particle_class, y=angularity)) + 
-  geom_violin()
-
-solidity_violin <- ggplot(artifact_data, aes(x= particle_class, y=solidity)) + 
-  geom_violin()
-
-grid.arrange(lwviolin,circleviolin,transpviolin ,angulviolin,solidity_violin,  nrow = 2)
-
+```{r fig.height=12,fig.width=12}
+artifact_data %>%
+  select(everything(), -starts_with('filter')) %>%
+  pivot_longer(c(-id, -img_id, -particle_class)) %>%
+  ggplot(aes(x=particle_class, y=value, fill=particle_class)) +
+  geom_violin() +
+  facet_wrap(vars(name), scales='free_y')
 ```
+
 Here we notice a significant difference between the distributions for transparency and circularly, particularly with the modes being so different. 
 Both solidity and length to width ratio may be candidates but both suffer from significant outliers skewing the plots
 Finally, angularity has an interesting bimodal distribution which raises questions why both experimental and site particles experience similarly peaked bimodal distributions
 
-#Histogram Variable comparisons
+In looking at some of the other variables, they have extremely long tails with most of the data sitting in a very small area.  This can be for two reasons - 1) this is correct, and the tails are just long, or 2) there are a number of repeated rows which have identical values for these variables.  This needs to be explored.
+
+# Histogram Variable comparisons
 
 Let's use the data explorer package on the experimental data
+## Experimental Data
 
 ```{r}
 artifact_data %>%
@@ -56,6 +50,7 @@ artifact_data %>%
 
 ```
 
+## Site Data
 And compare the output to what it looks like for the site data
 ```{r}
 artifact_data %>%
