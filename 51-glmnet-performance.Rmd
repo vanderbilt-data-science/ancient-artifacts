@@ -1,0 +1,80 @@
+---
+title: "51-glmnet-performance"
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: true
+---
+
+In this notbeook, we explore the performance of the glmnet model.  We additionally confirm the behavior of cross validation and hyperparameter tuning.  We investigate the role of the hyperparameters and their influence on the performance of the models very lightly, but focus on the model deliverable.
+
+**Make sure you run the 41-glmnet-modeling notebook before attempting to run this notebook.**
+
+```{r load required packages}
+#load previous notebook data
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("50-reporting.R")
+
+pacman::p_load(vip)
+```
+
+# Selected Model Performance Evaluation
+## Cross validation metrics from best model
+Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
+```{r best model cross validation}
+
+best_glmnet_fold_metrics <- calculate_best_performance_metrics(glmnet_fold_metrics, best_glmnet_params)
+
+```
+Here we can see the overall performance of the best model during its cross validation phase.  This performance mirrors the behavior of the previous cross-validation metrics.  The ROC AUC is again looking very stable, while the PR AUC leaves a bit to be desired.  The metrics which rely on threshold are very stable and performant for calculations which rely or focus heavily on the class of disinterest.  On the other hand, the sensitivity and ppv leave much to be desired.  Again, implementing a tailored thresholding strategy here will allow for better use of the model.
+
+## Performance on training data as a whole
+Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
+```{r extract and visualize training performance}
+#get prediction class and probabilities
+hp_training_preds <- get_prediction_dataframes(glmnet_final_fit, train_data)
+
+#calculate confusion matrix
+glmnet_conf_mat <- calculate_confusion_matrix(hp_training_preds)
+```
+These results allow us several important insights:
+1. The confusion matrix reflects the distribution of the data
+2. The calculated metrics correctly reflect the target class formulation
+3. The performance leaves room for improvement in terms of metrics calculated based on a threshold
+
+# Explaining the model
+## Variable imporance
+What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
+
+```{r glmnet variable importance, fig.height=6}
+glmnet_vip <- glmnet_final_fit %>%
+  pull_workflow_fit() %>%
+  vi_model(lambda = .$spec$args$penalty) %>%
+  mutate(scaled_imp = Importance/sum(Importance)) %>%
+  mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
+glmnet_vip %>%
+  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
+  geom_col() +
+  coord_flip() +
+  labs(title='Scaled coefficient magnitudes of glmnet',
+       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
+                                         digits=5, nsmall=2, scientific=TRUE),
+                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
+                                         digits=5, nsmall=3),
+                      sep=' '),
+       y='scaled absolute importance',
+       x='variable')
+```
+Of previous interest was transparency, solidity, and other metrics for discerning the different classes.  Here, we can make several observations:
+
+1.  We can see here that the e and f length differentially contribute to discriminating between different particle types.  However, I find this curious since one would think these would be essentially the same value (i.e., highly correlated).
+2. `da` and `dp` additionally contribute differentially to the classification.  The confusion around this result points to previous suggestions regarding restricting the size of the particles in the data.  This may also assist with (1).
+3.  Previous assertions have been confirmed regarding the relation of `transparency`, `compactness`, `solidity`, and other features regarding their relationship with microdebitage.
+
+# Save markdown file
+Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
+```{r save markdown}
+#fs::file_copy('51-glmnet-performance.nb.html', './html_results/51-glmnet-performance.nb.html', overwrite=TRUE)
+```
