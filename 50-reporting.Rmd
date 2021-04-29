@@ -65,7 +65,7 @@ cm <- pred_conf %>%
 
 gridExtra::grid.arrange(cm, t1, ncol=2)
 
-return (t1, cm)
+return (t1)
 }
 ```
 

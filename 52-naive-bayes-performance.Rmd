@@ -24,6 +24,19 @@ Let's first evaluate the performance using the cross-validation metrics from bef
 ```{r best model cross validation}
 #get best glmnet metrics
 best_nb_fold_metrics <- calculate_best_performance_metrics(nb_fold_metrics, best_nb_params)
+
+best_nb_fold_metrics %>%
+    mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
+    ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
+    geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
+    geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
+    facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
+    labs(title='Distribution of cross validation metrics for best hyperparameter set',
+         subtitle='By metric',
+         x='metric',
+         y='metric estimate') +
+    theme(legend.position = "none")
+
 ```
 We see very high values for accuracy, npv, and spec, all of which point to this model being one of the "outliers" we discussed earlier. 
 
@@ -34,7 +47,7 @@ Here, we look at the confusion matrix for the entire training set as well as com
 nb_training_preds <- get_prediction_dataframes(nb_final_fit, train_data)
 
 #plot and calculate confusion matrix
-t1 <- calculate_confusion_matrix(nb_training_preds)
+calculate_confusion_matrix(nb_training_preds)
 ```
 Here we see there were roughly 7,500 particles that we truly site particles that were classified as lithic samples. The overall accuracy remains around 83.7% and precision at 20%.
 
