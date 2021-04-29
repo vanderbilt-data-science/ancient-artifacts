@@ -15,7 +15,6 @@ fs::file_delete("10-load-data.R")
 #load in required packages for here
 pacman::p_load(tidymodels, usemodels, doParallel)
 registerDoParallel()
-
 ```
 
 # Split the data
