@@ -44,14 +44,7 @@ These are two strongly corner-based curves which is promising.
 ## Interpretating probability thresholds
 In this section, we gain insight into what we should do for thresholding and our expectations surrounding it.
 ```{r}
-hp_training_preds %>%
-  arrange(.pred_exp)%>%
-  mutate(prob_order = factor(1:nrow(.)))%>%
-  ggplot(aes(x=1:nrow(hp_training_preds), y=.pred_exp, color=particle_class))+
-  geom_point(size=1, alpha=0.6) +
-  labs(x='Sorted order of scores',
-       y='Scores',
-       title='Actual class label based on increasing score')
+plot_label_by_score(hp_training_preds)
 ```
 This plot quite nearly suggests that the threshold of 0.5 isn't bad at all for this model.  We might increase the sensitivity if we were to drop the threshold down to about 0.3 (capture all of the 'exp'), but we would really increase our false positives there.
 
@@ -65,16 +58,7 @@ In this section, we look at the calibration curve of the model.  Calibration cur
 In this section, we look at the threshold that has been chosen for evaluation.  Here, this is 0.5.
 
 ```{r investigate misclassification rate}
-hp_training_preds %>%
-  mutate(is_wrong = (.pred_class != particle_class)) %>%
-  mutate(bin_start = str_match(cut_interval(.$.pred_exp, n=20), "[\\(\\[]([\\d\\.]+).+]")[,2]) %>%
-  mutate(is_fp = ifelse(bin_start<0.5, "fn", "fp")) %>%
-  group_by(bin_start) %>%
-  summarise(bin_counts=sum(is_wrong)/n(), error_type=unique(is_fp)) %>%
-  ggplot(aes(x=bin_start, y=bin_counts, fill=error_type)) +
-  geom_col() +
-  labs(x='score interval', y='Percentage misclassified in bin', title='Misclassification rate in probability interval') + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+plot_misclassification_rates(hp_training_preds)
 ```
 Here, we see the same sort of information reflected in the first plot, where the misclassification error seems to start heavily around 0.3.  In that area, we're classifying a lot of things negative that we shouldn't, and flipping things over to 0.5, we start classifying things positive that we shouldn't.
 

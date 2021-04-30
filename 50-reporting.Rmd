@@ -1,9 +1,13 @@
 ---
 title: "50_reporting"
-output: html_notebook
+output: html_document
 ---
 
-Report the results of the project with relevant performance and modeling considerations.
+This file contains general functions to be applied across several model types for interpretation.
+
+```{r required imports}
+pacman::p_load(yardstick, precrec)
+```
 
 # Prediction with defined outcomes
 ```{r predict using fit on selected data}
@@ -68,6 +72,42 @@ gridExtra::grid.arrange(cm, t1, ncol=2)
 return (pred_conf)
 }
 ```
+
+# Probability-based curves
+```{r function for plotting ordered probability and class relation}
+plot_label_by_score <- function(preds_df){
+  #Function plots ordered probability with actual class as coloring for visual inspection of misclassification
+  #preds_df: prediction dataframe with minimally .pred_exp and particle_class columns
+  
+  preds_df %>%
+    arrange(.pred_exp)%>%
+    mutate(prob_order = factor(1:nrow(.)))%>%
+    ggplot(aes(x=1:nrow(preds_df), y=.pred_exp, color=particle_class))+
+    geom_point(size=1, alpha=0.6) +
+    labs(x='Sorted order of scores',
+         y='Scores',
+         title='Actual class label based on increasing score')
+}
+```
+
+```{r function for viewing misclassification by score}
+plot_misclassification_rates <- function(preds_df){
+  #Function plots misclassification rate by score bin
+  #preds_df: prediction dataframe with minimally .pred_exp and particle_class columns
+  
+  preds_df %>%
+    mutate(is_wrong = (.pred_class != particle_class)) %>%
+    mutate(bin_start = str_match(cut_interval(.$.pred_exp, n=20), "[\\(\\[]([\\d\\.]+).+]")[,2]) %>%
+    mutate(is_fp = ifelse(bin_start<0.5, "fn", "fp")) %>%
+    group_by(bin_start) %>%
+    summarise(bin_counts=sum(is_wrong)/n(), error_type=unique(is_fp)) %>%
+    ggplot(aes(x=bin_start, y=bin_counts, fill=error_type)) +
+    geom_col() +
+    labs(x='score interval', y='Percentage misclassified in bin', title='Misclassification rate in probability interval') + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+```
+
 
 ```{r function for ROC curves}
 plot_performance_curves <- function(pred_dfs, model_names=NULL, pos_class='exp'){
