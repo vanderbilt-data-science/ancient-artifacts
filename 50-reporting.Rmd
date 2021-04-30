@@ -34,7 +34,7 @@ calculate_best_performance_metrics <- function (fold_metrics, best_params) {
   filter(.config==best_params$.config[[1]])
 
   #plot
-  best_fold_metrics %>%
+  print(best_fold_metrics %>%
     mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
     ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
     geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
@@ -44,7 +44,7 @@ calculate_best_performance_metrics <- function (fold_metrics, best_params) {
          subtitle='By metric',
          x='metric',
          y='metric estimate') +
-    theme(legend.position = "none")
+    theme(legend.position = "none"))
 
   return (best_fold_metrics)
 }

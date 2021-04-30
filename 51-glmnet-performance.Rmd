@@ -37,6 +37,9 @@ Here we can see the overall performance of the best model during its cross valid
 Let's start by looking at an ROC curve.
 
 ```{r plot glmnet ROC and AUC}
+#get prediction class and probabilities
+hp_training_preds <- get_prediction_dataframes(glmnet_final_fit, train_data)
+
 plot_performance_curves(hp_training_preds)
 ```
 These are two strongly corner-based curves which is promising.
@@ -66,9 +69,6 @@ Here, we see the same sort of information reflected in the first plot, where the
 ### Confusion Matrix
 Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
 ```{r extract and visualize training performance}
-#get prediction class and probabilities
-hp_training_preds <- get_prediction_dataframes(glmnet_final_fit, train_data)
-
 conf_mat <- calculate_confusion_matrix(hp_training_preds)
 ```
 

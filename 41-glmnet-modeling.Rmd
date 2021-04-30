@@ -42,7 +42,8 @@ glmnet_workflow <-
   add_recipe(glmnet_recipe) %>% 
   add_model(glmnet_spec) 
 glmnet_parameters <- parameters(glmnet_spec)
-glmnet_grid <- grid_max_entropy(glmnet_parameters, size=20)
+#glmnet_grid <- grid_regular(glmnet_parameters, levels=5)
+glmnet_grid <- grid_max_entropy(glmnet_parameters, size=30)
 ```
 
 
