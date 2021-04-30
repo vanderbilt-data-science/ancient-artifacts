@@ -110,6 +110,24 @@ assert(artifact_data, within_bounds(1,Inf), l_w_ratio,
 # W/T Ratio: 1 (sphere)-infinity
 assert(artifact_data, within_bounds(1,Inf), w_t_ratio,
        description = "Values must be within 1-infinity range.")
+
+# Row distinctiveness
+is_distinct<- tryCatch({
+   assert_rows(artifact_data, col_concat, is_uniq, c(-id, -img_id, -fiber_length, -fiber_width))
+   return(TRUE)
+   }, error=function(err) {
+      message(err)
+      return(FALSE)
+   })
+
+# Remove rows if they're not distinct
+if(!is_distinct){
+   message('\nOriginal size of data is: ', nrow(artifact_data))
+   message('Dropping all rows which are not distinct...\n')
+   artifact_data <- artifact_data %>%
+      distinct(across(c(everything(), -id, -img_id, -fiber_length, -fiber_width)), .keep_all=TRUE)
+   message('\nModified size of data is: ', nrow(artifact_data))
+}
 ```
 
 # Questions
