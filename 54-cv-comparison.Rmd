@@ -1,0 +1,111 @@
+---
+title: "54-cv-comparison"
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: true
+---
+
+In this notebook, we compare the effectiveness of the various model types based on the performance of cross validation metrics. 
+
+**Note that prior to running this notebook, 10, 40, and the various model files must already have been run.**
+
+### Useful packages
+```{r glmnet specific modeling packages, results='hide'}
+pacman::p_load(glmnet, tictoc, vip, tidytext, ranger)
+```
+
+
+```{r aggregating hyperparameter tuning/cross validation metrics}
+rf_tune_metrics <- rf_tune %>% 
+  collect_metrics()
+
+nb_tune_metrics <- nb_tune%>% 
+  collect_metrics()
+
+xgb_tune_metrics <- xgb_tune%>% 
+  collect_metrics()
+
+head(rf_tune_metrics, 10)
+```
+
+## Basic performance overview
+Let's just look at the overall (fold-less) distribution of the metrics.
+```{r overall performance}
+rf_tune_metrics %>%
+  ggplot(aes(x=.metric, y=mean)) +
+  geom_boxplot(aes(fill=.metric), outlier.shape=NA, na.rm=TRUE) +
+  geom_jitter(na.rm=TRUE) +
+  facet_wrap(facets='.metric', nrow=2, scales='free') +
+  theme(legend.position = 'none') +
+  labs(title='Distribution of mean cv performance by 20 model candidates',
+       subtitle='By metric',
+       x='metric',
+       y='mean cv metric') +
+  scale_x_discrete(labels=NULL)
+
+```
+The general observations here pretty much mirror those of the kfold-separated performance plot above.  This is expected.
+
+## Looking at all of the metrics together to select a model
+One possible way of evaluating a good model might be to rank the model according to its performance across all of the metrics.  This allows us to get a bit away from the values themselves.  However, we can also look at the values themselves and investigate the relationship.
+```{r overall performance assessment, fig.height=6}
+#calculate mean metrics and rank
+mdl_overall <- tune_metrics %>%
+  group_by(.metric) %>%
+  mutate(metr_rank=rank(-mean, ties.method='average')) %>% #-mean so that rank increases (so, worse) with decreasing metric
+  group_by(.config, .add=FALSE) %>%
+  mutate(mean_rank = mean(metr_rank)) %>% #add mean rank
+  mutate(mean_value = -mean(mean, na.rm=TRUE)) %>% #add mean value
+  pivot_longer(cols=c(mean_rank, mean_value), names_to = 'agg_perf_type', values_to='agg_perf') %>%
+  group_by(agg_perf_type) %>%
+  filter(.metric=='pr_auc') #just pick one set of values; all these aggregated values will be identical
+
+#plot; note that there is manipulation of negatives for the directionality and absolute value
+mdl_overall %>%  
+  ggplot(aes(x=reorder_within(str_remove(.config, 'Preprocessor1_'), -agg_perf, agg_perf_type),
+             y=abs(agg_perf),
+             width=.5)) +
+  geom_col(aes(fill=mtry)) +
+  geom_label(aes(label=round(abs(agg_perf),3)), label.r=unit(0.0, "lines"), label.size=0, size=3) + 
+  facet_wrap(~agg_perf_type, ncol=2, scales='free') +
+  scale_x_reordered() + 
+  coord_flip() +
+  labs(title='General model performance over all metrics by mean overall rank',
+       subtitle='Bar appearance shows parameters (width=min_n, color=mtry)',
+       y='Mean over all metrics',
+       x='Model name')
+```
+Model20 here appears to be the best; mean_value numbers are highly similar though. Also, mtry value relationship with performance is uncertain, though it appears the worst performing models on these charts also have low mtry values. 
+
+## Selecting the best model
+With this information in mind as well as more help from tidymodels, we can then select the "best" model.  One way to do this is to simply choose according to some metric.  We'll decide to use `pr_auc` here just because our training data is so imbalanced.
+
+```{r get best hyperparameters from resampling}
+eval_metric <- 'pr_auc'
+
+#show best parameters in terms of pr_auc
+rf_tune %>% show_best(eval_metric)
+```
+
+We find here that this is exactly in line with our previous assessment of overall model performance. 
+
+```{r select best parameters}
+#select best parameters
+best_rf_params <- rf_tune %>%
+  select_best(eval_metric)
+
+#show selected parameters
+best_rf_params
+```
+ We can see that Model 20 (best in overall rank and mean metric performance) predictably had the highest `pr_auc`.  We also can see that this is essentially a LASSO model based on the mixture, although the penalty is small yet not unexpected.  We will use these defined parameters to fit our model.
+
+
+# Save markdown file
+Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
+```{r save markdown}
+fs::file_copy('54-cv-comparison.nb.html', './html_results/54-cv-comparison.nb.html', overwrite=TRUE)
+```
+
