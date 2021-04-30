@@ -68,3 +68,36 @@ gridExtra::grid.arrange(cm, t1, ncol=2)
 return (pred_conf)
 }
 ```
+
+```{r function for ROC curves}
+plot_performance_curves <- function(pred_dfs, model_names=NULL, pos_class='exp'){
+  #Function plots ROC and PR AUC curves for one or more models and returns the eval information
+  #preds_df: a single dataframe or list of dataframes containing prediction info (.pred_exp and particle_class at least)
+  #model_names: VECTOR of model names corresponding to order of preds_df
+  #pos_class (default 'exp'): positive class or class of interest
+  
+  #if passed in a single dataframe for plotting, make into list
+  if('tbl_df' %in% class(pred_dfs))
+    pred_dfs=list(pred_dfs)
+  
+  #get list of scores for plotting
+  scores_list <- pred_dfs %>%
+    map(~select(., .pred_exp)) %>%
+    join_scores()
+  
+  #get list of labels for plotting
+  labels_list <- pred_dfs %>%
+    map(~select(., particle_class)) %>%
+    join_labels()
+  
+  #fix model names if necessary
+  if(is.null(model_names)){
+    model_names = str_c('Model', 1:length(pred_dfs))
+  }
+  
+  #calculate model eval and autoplot
+  model_eval = evalmod(scores = scores_list, labels = labels_list, modnames = model_names, posclass = pos_class)
+  autoplot(model_eval)
+  return(model_eval)
+}
+```
