@@ -48,7 +48,7 @@ best_fold_metrics %>%
   ggplot(aes(x=.metric, y=.estimate, fill=modeltype)) +
   geom_boxplot(outlier.colour = 'red', na.rm=TRUE) +
   facet_wrap(facet='.metric', scales='free', nrow=2) + 
-  labs(title='Distribution of performance by 20 model candidates',
+  labs(title='Comparison of performance of CV metrics between 4 model types',
        subtitle='By fold and metric',
        x='metric',
        y='metric distribution') +
