@@ -1,0 +1,117 @@
+---
+title: "60_inference"
+output: html_notebook
+---
+
+Provide a framework for predicting across multiple models
+
+
+#Load models and relevant prediction data (from Box - this information will probably be stored as a .RData object)
+
+#Load relevant prediction data from Box
+
+# Validate prediction 
+```{r validate prediction dataframe }
+
+validate_predictions <- function(pred_data) {
+  
+  # Angularity: 0 (perfect circle)-180 (many sharp edges)
+assert(pred_data, within_bounds(0,180), angularity, 
+       description = "Values must be within 0-180 range.")
+
+# Circularity: 0-1 (perfect circle)
+assert(pred_data, within_bounds(0,1), circularity,
+       description = "Values must be within 0-1 range.")
+
+# Solidity: 0-1 (very smooth surface)
+assert(pred_data, within_bounds(0,1), solidity,
+       description = "Values must be within 0-1 range.")
+
+# Transparency: 0 (least transparent)-1 (most transparent)
+assert(pred_data, within_bounds(0,1), transparency,
+       description = "Values must be within 0-1 range.")
+
+# T/W Ratio: 0-1 (represents a sphere)
+assert(pred_data, within_bounds(0,1), t_w_ratio,
+       description = "Values must be within 0-1 range.")
+
+# Sphericity: 0-1 (perfect circle)
+assert(pred_data, within_bounds(0,1), sphericity,
+       description = "Values must be within 0-1 range.")
+
+# Concavity: 0-1 (rough, spikey surface)
+assert(pred_data, within_bounds(0,1), concavity,
+       description = "Values must be within 0-1 range.")
+
+# Convexity: 0-1 (smooth)
+assert(pred_data, within_bounds(0,1), convexity,
+       description = "Values must be within 0-1 range.")
+
+#L/W Aspect Ratio: 1 (sphere)-infinity
+assert(pred_data, within_bounds(1,Inf), l_w_ratio,
+       description = "Values must be within 1-infinity range.")
+
+# W/T Ratio: 1 (sphere)-infinity
+assert(pred_data, within_bounds(1,Inf), w_t_ratio,
+       description = "Values must be within 1-infinity range.")
+
+# Verify that f_width always is between 0.125-6 range
+assert(pred_data, within_bounds(0.125,6), f_width,
+       description = "Values must be within 0.125-6 range." )
+
+
+}
+
+```
+
+# Predict using all loading models
+
+```{r predict on the data using the provided models}
+
+predict_with_models <- function (model_workflow, model_best_params, test_data) {
+  
+  #finalize workflow with model hyperparameters
+  model_final_wf <- model_workflow %>%
+    finalize_workflow(model_best_params)
+  model_final_wf
+
+  #using final workflow, fit on test data
+  final_fit <- model_final_wf %>%
+    fit(data = test_data)
+
+  #create the training prediction data frames
+  model_training_preds <- get_prediction_dataframes(final_fit, test_data)
+
+
+  assert(model_training_preds, within_bounds(0,1), .pred_site, 
+       description = "Predicition probabilities must be between 0 and 1")
+  assert(model_training_preds, within_bounds(0,1), .pred_exp, 
+       description = "Predicition probabilities must be between 0 and 1")
+  
+  
+  assert(model_training_preds, (in_set(c("exp", "site") ) ), .pred_class, 
+       description = "Predicition must be experimental or site")
+    assert(model_training_preds, (in_set(c("exp", "site") ) ), particle_class, 
+       description = "Predicition must be experimental or site")
+
+}
+```
+
+#Identify particles which require review 
+
+```{r identify particles of concern}
+review_particles <-function (pred_frame) {
+  
+  ##model thought it was a particle class with more than 50% confidence and got it incorrect
+  mismatched_particles <- pred_frame %>%
+    filter(particle_class = "exp" & .pred_site >= 0.5 ) %>%
+    filter(particle_class = "site" & .pred_exp >= 0.5 )
+  
+  ##model was unsure about a particle's class
+  questionable_particles <- pred_frame %>%
+    filter(.pred_exp >= 0.49 & .pred_exp <= 0.51 ) %>%
+    filter(.pred_site >= 0.49 & .pred_site <= 0.51 )
+}
+```
+
+#Output the percentage of microdebitage estimated in the sample
