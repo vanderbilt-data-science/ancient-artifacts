@@ -1,0 +1,74 @@
+---
+title: "54-xgboost-performance"
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: true
+---
+
+
+In this notebook we explore the performance of the Xgboost model. Additionally, we will confirm the behavior of cross validation and hyperparameter tuning. 
+
+**Make sure you run notebooks 10, 40, and the 43-xgboost-modeling notebook before attempting to run this notebook**
+
+### Useful packages
+```{r load packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("50-reporting.R")
+
+pacman::p_load(xgboost,recipes, parsnip)
+```
+
+
+# Selected Model Performance Evaluation
+## Cross validation metrics from best model
+Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
+```{r best model cross validation}
+#get best xgboost metrics
+best_xgb_fold_metrics <- calculate_best_performance_metrics(xgb_fold_metrics, xgb_best_params)
+```
+
+## Performance on training data as a whole
+Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
+```{r extract and visualize training performance}
+#get prediction class and probabilities
+xgb_training_preds <- get_prediction_dataframes(xgb_final_fit, train_data)
+#plot and calculate confusion matrix
+t1 <- calculate_confusion_matrix(xgb_training_preds)
+```
+
+# Explaining the model
+## Variable importance
+What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
+
+```{r xgb variable importance, fig.height=6}
+xgb_vip <- xgb_final_fit %>%
+  pull_workflow_fit() %>%
+  vi_model() %>%
+  mutate(scaled_imp = Importance/sum(Importance))
+
+xgb_vip %>%
+  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=scaled_imp)) +
+  geom_col() +
+  coord_flip() +
+  labs(title='Scaled coefficient magnitudes of glmnet',
+       subtitle=str_c('mtry:', format(pull_workflow_fit(xgb_final_fit)$spec$args$mtry,
+                                         digits=5, nsmall=2, scientific=TRUE),
+                      'min_n:', format(pull_workflow_fit(xgb_final_fit)$spec$args$min_n[[2]],
+                                         digits=5, nsmall=3),
+                      sep=' '),
+       y='scaled absolute importance',
+       x='variable')
+```
+
+Here, we can see that transparency is weighted as drastically important compared to all of the other factors followed by solidity and f_length. All of the other factors aside from these 3 are weighted as fairly similar in importance.
+
+# Save markdown file
+Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
+```{r save markdown}
+fs::file_copy('54-xgboost-performance.nb.html', './html_results/54-xgboost-performance.nb.html', overwrite=TRUE)
+
+

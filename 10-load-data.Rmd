@@ -111,6 +111,11 @@ assert(artifact_data, within_bounds(1,Inf), l_w_ratio,
 assert(artifact_data, within_bounds(1,Inf), w_t_ratio,
        description = "Values must be within 1-infinity range.")
 
+# Verify that f_width always is between 0.125-6 range
+assert(artifact_data, within_bounds(0.125,6), f_width,
+       description = "Values must be within 0.125-6 range." )
+       
+       
 # Row distinctiveness
 is_distinct<- tryCatch({
    assert_rows(artifact_data, col_concat, is_uniq, c(-id, -img_id, -fiber_length, -fiber_width))
@@ -128,6 +133,7 @@ if(!is_distinct){
       distinct(across(c(everything(), -id, -img_id, -fiber_length, -fiber_width)), .keep_all=TRUE)
    message('\nModified size of data is: ', nrow(artifact_data))
 }
+
 ```
 
 # Questions
