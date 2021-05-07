@@ -11,17 +11,22 @@ output:
 
 In this notebook we explore the performance of the Xgboost model. Additionally, we will confirm the behavior of cross validation and hyperparameter tuning. 
 
-**Make sure you run notebooks 10, 40, and the 43-xgboost-modeling notebook before attempting to run this notebook**
+**Make sure you run the 43-xgboost-modeling notebook before attempting to run this notebook if you want to generate new results.**
 
-### Useful packages
-```{r load packages, results='hide'}
+```{r load required packages, results='hide'}
 #load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
 source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
 fs::file_delete("50-reporting.R")
 
-pacman::p_load(xgboost,recipes, parsnip)
+pacman::p_load(vip,xgboost,recipes, parsnip)
 ```
 
+# Load Saved Data
+```{r load saved xgboost}
+#move_model_info('xgb', 'load')
+```
 
 # Selected Model Performance Evaluation
 ## Cross validation metrics from best model

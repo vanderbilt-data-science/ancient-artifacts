@@ -205,3 +205,14 @@ glmnet_final_wf
 glmnet_final_fit <- glmnet_final_wf %>%
   fit(data = train_data)
 ```
+
+# Save markdown file
+Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
+```{r save markdown}
+#fs::file_copy('41-glmnet-modeling.nb.html', './html_results/41-glmnet-modeling.nb.html', overwrite=TRUE)
+```
+
+```{r save glmnet model to box}
+#move_model_info('glmnet', 'save', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/'))
+```
+

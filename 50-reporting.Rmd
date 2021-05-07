@@ -1,5 +1,5 @@
 ---
-title: "50_reporting"
+title: "50-reporting"
 output: html_document
 ---
 

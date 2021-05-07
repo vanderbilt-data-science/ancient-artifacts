@@ -10,15 +10,22 @@ output:
 
 In this notbeook, we explore the performance of the glmnet model.  We additionally confirm the behavior of cross validation and hyperparameter tuning.  We investigate the role of the hyperparameters and their influence on the performance of the models very lightly, but focus on the model deliverable.
 
-**Make sure you run the 41-glmnet-modeling notebook before attempting to run this notebook.**
+**Make sure you run the 41-glmnet-modeling notebook before attempting to run this notebook to generate new results.**
 
-```{r load required packages}
+```{r load required packages, results='hide'}
 #load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
 source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
 fs::file_delete("50-reporting.R")
 
 pacman::p_load(vip)
 ```
+# Load Saved Data
+```{r load saved glmnet}
+#move_model_info('glmnet', 'load', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/'))
+```
+
 
 # Selected Model Performance Evaluation
 ## Cross validation metrics from best model
