@@ -17,10 +17,12 @@ output:
 
 In this notebook, we use Naive Bayes to perform modeling.  Our general approach will be to use hyperparameter tuning via cross-validation to identify the best performing hyperparameters,  In another notebook, we will investigate the performance of the model.
 
-**Note that prior to running this notebook, 10 and 40 must already have been run.**
-
 ### Useful packages
 ```{r naive bayes specific modeling packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
+fs::file_delete("40-modeling.R")
+
 pacman::p_load(glmnet, tictoc, tidytext, naivebayes, discrim)
 ```
 
@@ -201,4 +203,8 @@ nb_final_wf
 #using final workflow, fit on training data
 nb_final_fit <- nb_final_wf %>%
   fit(data = train_data)
+```
+
+```{r save naive bayes model to box}
+#move_model_info('nb', 'save')
 ```
