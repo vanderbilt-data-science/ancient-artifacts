@@ -70,49 +70,56 @@ Good.  We can see here that the 0th class is the "target" class.  Note that the 
 # Validate data
 ```{r Here we will start writing asserts to validate the data.} 
 
-# Angularity: 0 (perfect circle)-180 (many sharp edges)
-assert(artifact_data, within_bounds(0,180), angularity, 
+
+validate_data <- function(pred_data) {
+  
+  # Angularity: 0 (perfect circle)-180 (many sharp edges)
+assert(pred_data, within_bounds(0,180), angularity, 
        description = "Values must be within 0-180 range.")
 
 # Circularity: 0-1 (perfect circle)
-assert(artifact_data, within_bounds(0,1), circularity,
+assert(pred_data, within_bounds(0,1), circularity,
        description = "Values must be within 0-1 range.")
 
 # Solidity: 0-1 (very smooth surface)
-assert(artifact_data, within_bounds(0,1), solidity,
+assert(pred_data, within_bounds(0,1), solidity,
        description = "Values must be within 0-1 range.")
 
 # Transparency: 0 (least transparent)-1 (most transparent)
-assert(artifact_data, within_bounds(0,1), transparency,
+assert(pred_data, within_bounds(0,1), transparency,
        description = "Values must be within 0-1 range.")
 
 # T/W Ratio: 0-1 (represents a sphere)
-assert(artifact_data, within_bounds(0,1), t_w_ratio,
+assert(pred_data, within_bounds(0,1), t_w_ratio,
        description = "Values must be within 0-1 range.")
 
 # Sphericity: 0-1 (perfect circle)
-assert(artifact_data, within_bounds(0,1), sphericity,
+assert(pred_data, within_bounds(0,1), sphericity,
        description = "Values must be within 0-1 range.")
 
 # Concavity: 0-1 (rough, spikey surface)
-assert(artifact_data, within_bounds(0,1), concavity,
+assert(pred_data, within_bounds(0,1), concavity,
        description = "Values must be within 0-1 range.")
 
 # Convexity: 0-1 (smooth)
-assert(artifact_data, within_bounds(0,1), convexity,
+assert(pred_data, within_bounds(0,1), convexity,
        description = "Values must be within 0-1 range.")
 
 #L/W Aspect Ratio: 1 (sphere)-infinity
-assert(artifact_data, within_bounds(1,Inf), l_w_ratio,
+assert(pred_data, within_bounds(1,Inf), l_w_ratio,
        description = "Values must be within 1-infinity range.")
 
 # W/T Ratio: 1 (sphere)-infinity
-assert(artifact_data, within_bounds(1,Inf), w_t_ratio,
+assert(pred_data, within_bounds(1,Inf), w_t_ratio,
        description = "Values must be within 1-infinity range.")
 
 # Verify that f_width always is between 0.125-6 range
-assert(artifact_data, within_bounds(0.125,6), f_width,
+assert(pred_data, within_bounds(0.125,6), f_width,
        description = "Values must be within 0.125-6 range." )
+
+
+}
+validate_data(artifact_data)
 ```
 
 # Questions
