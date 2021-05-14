@@ -205,6 +205,11 @@ nb_final_fit <- nb_final_wf %>%
   fit(data = train_data)
 ```
 
+# Save markdown file
+```{r save markdown}
+#fs::file_copy('42-naivebayes-modeling.nb.html', './html_results/42-naivebayes-modeling.nb.html', overwrite=TRUE)
+```
+
 ```{r save naive bayes model to box}
-#move_model_info('nb', 'save')
+#move_model_info('nb', 'save', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/'))
 ```

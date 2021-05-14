@@ -259,13 +259,12 @@ xgb_vip %>%
 Here, we can see that transparency is weighted as drastically important compared to all of the other factors followed by solidity and f_length. All of the other factors aside from these 3 are weighted as fairly similar in importance.
 
 # Save markdown file
-Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
-fs::file_copy('43-xgboost-modeling.nb.html', './html_results/43-xgboost-modeling.nb.html', overwrite=TRUE)
+#fs::file_copy('43-xgboost-modeling.nb.html', './html_results/43-xgboost-modeling.nb.html', overwrite=TRUE)
 ```
 
 ```{r save xgboost model to box}
-#move_model_info('xgb', 'save')
+#move_model_info('xgb', 'save', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/'))
 ```
 
 

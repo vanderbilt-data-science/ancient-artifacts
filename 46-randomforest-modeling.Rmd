@@ -216,10 +216,10 @@ rf_final_fit <- rf_final_wf %>%
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
-fs::file_copy('46-randomforest-modeling.nb.html', './html_results/46-randomforest-modeling.nb.html', overwrite=TRUE)
+#fs::file_copy('46-randomforest-modeling.nb.html', './html_results/46-randomforest-modeling.nb.html', overwrite=TRUE)
 ```
 
 ```{r save random forest model to box}
-#move_model_info('rf', 'save')
+#move_model_info('rf', 'save', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/'))
 ```
 
