@@ -27,11 +27,16 @@ get_prediction_dataframes <- function(final_fit, pred_data) {
 # Performance metric analysis
 
 ```{r calculate and print best xval model metrics}
-calculate_best_performance_metrics <- function (fold_metrics, best_params) {
+calculate_best_performance_metrics <- function (fold_metrics, best_params, mdl_name=NULL) {
+  
+  #add name to model if desired
+  if(is.null(mdl_name)){
+    mdl_name = 'selected model'
+  }
   
   #get metrics
   best_fold_metrics <- fold_metrics %>%
-  filter(.config==best_params$.config[[1]])
+    filter(.config==best_params$.config[[1]])
 
   #plot
   print(best_fold_metrics %>%
@@ -41,7 +46,7 @@ calculate_best_performance_metrics <- function (fold_metrics, best_params) {
     geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
     facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
     labs(title='Distribution of cross validation metrics for best hyperparameter set',
-         subtitle='By metric',
+         subtitle=str_c('By metric, for ', mdl_name),
          x='metric',
          y='metric estimate') +
     theme(legend.position = "none"))

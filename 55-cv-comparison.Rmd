@@ -29,25 +29,17 @@ map(mdl_list, ~move_model_info(., 'load', box_dir = path.expand('~/../Box/DSI_An
 
 # Aggregate performance metrics
 ```{r aggregating hyperparameter tuning/cross validation metrics}
-best_rf_fold_metrics <- calculate_best_performance_metrics(rf_fold_metrics, best_rf_params) %>%
-  select(id, .metric, .estimate, .config) %>%
-  mutate(modeltype = "rf")
+#get best performance metrics for all models
+best_fold_metrics <- mdl_list %>%
+  map(~calculate_best_performance_metrics(get(str_c(., '_fold_metrics')), 
+                                          get(str_c('best_', ., '_params')), .))
+#name each element in list
+names(best_fold_metrics) <- mdl_list
 
-best_nb_fold_metrics <- calculate_best_performance_metrics(nb_fold_metrics, best_nb_params) %>%
-  select(id, .metric, .estimate, .config) %>%
-  mutate(modeltype = "nb")
-
-best_xgb_fold_metrics <- calculate_best_performance_metrics(xgb_fold_metrics, best_xgb_params) %>%
-  select(id, .metric, .estimate, .config) %>%
-  mutate(modeltype = "xgb")
-
-best_glmnet_fold_metrics <- calculate_best_performance_metrics(glmnet_fold_metrics, best_glmnet_params) %>% 
-  select(id, .metric, .estimate, .config) %>%
-  mutate(modeltype = "glmnet")
-
-best_fold_metrics <- bind_rows(best_rf_fold_metrics, best_nb_fold_metrics, best_xgb_fold_metrics, best_glmnet_fold_metrics) 
-
-head(best_fold_metrics, 10)
+#aggregate all fold metrics and mutate all names
+best_fold_metrics <- best_fold_metrics %>%
+  map(~select(., id, .metric, .estimate, .config)) %>%
+  map2_dfr(names(best_fold_metrics), function(df, mdl_name){mutate(df, modeltype=mdl_name)})
 ```
 
 ## Basic performance overview
@@ -104,7 +96,6 @@ plot_calibration_curve(cal_df)
 
 
 # Save markdown file
-Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
 #fs::file_copy('55-cv-comparison.nb.html', './html_results/55-cv-comparison.nb.html', overwrite=TRUE)
 ```
