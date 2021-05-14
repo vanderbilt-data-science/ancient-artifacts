@@ -32,20 +32,11 @@ pacman::p_load(vip)
 ## Cross validation metrics from best model
 Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
 ```{r best model cross validation}
-#get best glmnet metrics
+#get best nb metrics
 best_nb_fold_metrics <- calculate_best_performance_metrics(nb_fold_metrics, best_nb_params)
-
 best_nb_fold_metrics %>%
-    mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
-    ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
-    geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
-    geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
-    facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
-    labs(title='Distribution of cross validation metrics for best hyperparameter set',
-         subtitle='By metric',
-         x='metric',
-         y='metric estimate') +
-    theme(legend.position = "none")
+  group_by(.metric) %>% 
+  summarize(overall_perf = mean(.estimate))
 
 ```
 We see very high values for accuracy, npv, and spec, all of which point to this model being one of the "outliers" we discussed earlier. 
@@ -105,6 +96,12 @@ ggplot(nb_vip, aes(x=var, y=exp)) +
 ```
 Here we can clearly see a common thread through many of the models. The Naive bayes model also weighted transparency incredibly high followed by the typical compactness, roundness, and l_t_ratio which were also common candidates for high importance variables. 
 
+## ROC curves
+```{r}
+plot_performance_curves(nb_training_preds)
+```
+
+
 ##Calibration curve
 ```{r visualize the model calibration}
 #get prediction class and probabilities
@@ -118,11 +115,13 @@ plot_calibration_curve(nb_training_preds)
 plot_prediction_probabilities(nb_training_preds)
 ```
 
+```{r}
+plot_label_by_score(nb_training_preds)
+```
 
 
 # Save markdown file
-Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
-fs::file_copy('52-naive-bayes-performance.nb.html', './html_results/52-naive-bayes-performance.nb.html', overwrite=TRUE)
+#fs::file_copy('52-naive-bayes-performance.nb.html', './html_results/52-naive-bayes-performance.nb.html', overwrite=TRUE)
 ```
 
