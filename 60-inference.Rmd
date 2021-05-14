@@ -129,7 +129,7 @@ percent_microdebitage <- function(pred_frame) {
       count(.pred_class) %>%
       summarise(total = sum(n))
    
-   microdeb_percent <- return((microdeb_count / totalpart_count) * 100)
+  return((microdeb_count / totalpart_count) * 100)
   
 }
 ```
