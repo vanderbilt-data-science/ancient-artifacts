@@ -64,6 +64,10 @@ Here, we look at the distribution of the probabilities based on the class
 ### Calibration curve
 In this section, we look at the calibration curve of the model.  Calibration curves closer to the 45 degree line demonstrate better calibrated models (e.g., where scores can be interpreted as probabilities).
 
+```{r glmnet calibration curve}
+plot_calibration_curve(hp_training_preds, mdl_name='glmnet')
+```
+
 ## Interpretations based on thresholds
 In this section, we look at the threshold that has been chosen for evaluation.  Here, this is 0.5.
 
@@ -115,7 +119,6 @@ Of previous interest was transparency, solidity, and other metrics for discernin
 3.  Previous assertions have been confirmed regarding the relation of `transparency`, `compactness`, `solidity`, and other features regarding their relationship with microdebitage.
 
 # Save markdown file
-Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
 #fs::file_copy('51-glmnet-performance.nb.html', './html_results/51-glmnet-performance.nb.html', overwrite=TRUE)
 ```
