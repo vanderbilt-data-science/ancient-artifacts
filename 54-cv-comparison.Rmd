@@ -1,5 +1,5 @@
 ---
-title: "54-cv-comparison"
+title: "55-cv-comparison"
 output:
   html_notebook:
     toc: yes
@@ -49,7 +49,7 @@ best_fold_metrics %>%
   geom_boxplot(outlier.colour = 'red', na.rm=TRUE) +
   facet_wrap(facet='.metric', scales='free', nrow=2) + 
   labs(title='Comparison of performance of CV metrics between 4 model types',
-       subtitle='By fold and metric',
+       subtitle='By metric and modeltype',
        x='metric',
        y='metric distribution') +
   scale_x_discrete(labels=NULL)
@@ -61,7 +61,11 @@ best_fold_metrics %>%
   group_by(modeltype, .metric) %>%
   summarise(mean_value = mean(.estimate, na.rm = TRUE)) %>%
   ggplot(mapping = aes(x=.metric, y=mean_value, fill = modeltype))+
-    geom_col(position = "dodge")
+    geom_col(position = "dodge") +
+    labs(title='Mean values of CV metrics compared between 4 model types',
+       subtitle='By metric and modeltype',
+       x='metric',
+       y='mean value')
   
 ```
 
@@ -69,6 +73,5 @@ best_fold_metrics %>%
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
-fs::file_copy('54-cv-comparison.nb.html', './html_results/54-cv-comparison.nb.html', overwrite=TRUE)
+fs::file_copy('55-cv-comparison.nb.html', './html_results/55-cv-comparison.nb.html', overwrite=TRUE)
 ```
-
