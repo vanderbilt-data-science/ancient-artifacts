@@ -91,22 +91,36 @@ ggplot(data = pred_frame, mapping = aes(x = .pred_class , y =.pred_site, color =
 # Calibration curve
 ```{r plot a calibration curve based on prediction}
 
-plot_calibration_curve <- function(pred_frame){
+plot_calibration_curve <- function(pred_frame, mdl_name=NULL){
+  
+  #add compatibility for plotting many models
+  if(!('mdl_name' %in% names(pred_frame))){
+    
+    #if you don't provide a value, you get the default
+    if(is.null(mdl_name)){
+      mdl_name <- 'mdl'
+    }
+    
+    #otherwise, you can specifically name a single model
+    pred_frame <- pred_frame %>%
+      mutate(mdl_name = mdl_name)
+      
+  }
+  
+  #get training pred labels in a format compatible with geom_smooth
   new_training_preds <- as.data.frame(pred_frame)
   new_training_preds$particle_class <- as.numeric(new_training_preds$particle_class)
   new_training_preds[, 4][new_training_preds[, 4] == 2] <-0
-
-  #new_training_preds$particle_class <- new_training_preds$particle_class - 1
   
+  #plot calibration curve
+  ggplot(data = new_training_preds, mapping = aes(x = .pred_exp , y = particle_class)  ) +
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+    scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+    geom_smooth(aes(x = .pred_exp, y = particle_class, color=mdl_name ), se = F, method = "loess") + 
   
-ggplot(data = new_training_preds, mapping = aes(x = .pred_exp , y = particle_class)  ) +
-  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
-  scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
-  geom_smooth(aes(x = .pred_exp, y = particle_class ), color = "red", se = F, method = "loess") + 
-
-  geom_abline()+
-  xlab("Model Probability of Experimental") + ylab("True Particle Class (Site [0] to Experimental[1]") +
-  labs(title="Calibration Curve")
+    geom_abline() +
+    xlab("Model Probability of Experimental") + ylab("True Particle Class (Site [0] to Experimental[1]") +
+    labs(title="Calibration Curve", color='Model Type')
   
   
 }
@@ -157,7 +171,7 @@ plot_performance_curves <- function(pred_dfs, model_names=NULL, pos_class='exp')
   
   #if passed in a single dataframe for plotting, make into list
   if('tbl_df' %in% class(pred_dfs))
-    pred_dfs=list(pred_dfs)
+    pred_dfs<-list(pred_dfs)
   
   #get list of scores for plotting
   scores_list <- pred_dfs %>%
@@ -171,11 +185,11 @@ plot_performance_curves <- function(pred_dfs, model_names=NULL, pos_class='exp')
   
   #fix model names if necessary
   if(is.null(model_names)){
-    model_names = str_c('Model', 1:length(pred_dfs))
+    model_names <- str_c('Model', 1:length(pred_dfs))
   }
   
   #calculate model eval and autoplot
-  model_eval = evalmod(scores = scores_list, labels = labels_list, modnames = model_names, posclass = pos_class)
+  model_eval <- evalmod(scores = scores_list, labels = labels_list, modnames = model_names, posclass = pos_class)
   autoplot(model_eval)
   return(model_eval)
 }

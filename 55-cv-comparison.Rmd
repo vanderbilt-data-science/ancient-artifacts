@@ -1,5 +1,5 @@
 ---
-title: "54-cv-comparison"
+title: "55-cv-comparison"
 output:
   html_notebook:
     toc: yes
@@ -10,14 +10,24 @@ output:
 
 In this notebook, we compare the effectiveness of the various model types based on the performance of cross validation metrics. 
 
-**Note that prior to running this notebook, 10, 40, and the various model files must already have been run.**
-
 ### Useful packages
-```{r glmnet specific modeling packages, results='hide'}
-pacman::p_load(glmnet, tictoc, vip, tidytext, ranger)
+```{r load required packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
+fs::file_delete("50-reporting.R")
+
+pacman::p_load(vip)
 ```
 
+# Load data (if desired)
+```{r load all models}
+mdl_list <- list('glmnet', 'nb', 'rf', 'xgb')
+map(mdl_list, ~move_model_info(., 'load', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/')))
+```
 
+# Aggregate performance metrics
 ```{r aggregating hyperparameter tuning/cross validation metrics}
 best_rf_fold_metrics <- calculate_best_performance_metrics(rf_fold_metrics, best_rf_params) %>%
   select(id, .metric, .estimate, .config) %>%
@@ -41,7 +51,7 @@ head(best_fold_metrics, 10)
 ```
 
 ## Basic performance overview
-Let's just look at the overall (fold-less) distribution of the metrics.
+Let's just look at the overall distribution of the metrics.
 ```{r overall performance}
 best_fold_metrics %>%
   mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
@@ -55,8 +65,9 @@ best_fold_metrics %>%
   scale_x_discrete(labels=NULL)
 
 ```
-The general observations here pretty much mirror those of the kfold-separated performance plot above.  This is expected.
-```{r}
+
+
+```{r performance summaries, message=FALSE}
 best_fold_metrics %>%
   group_by(modeltype, .metric) %>%
   summarise(mean_value = mean(.estimate, na.rm = TRUE)) %>%
@@ -65,10 +76,36 @@ best_fold_metrics %>%
   
 ```
 
+# Compare ROC curves
+```{r compare rocs}
+#get list of prediction dataframes
+model_preds_dfs <- mdl_list %>%
+  map(~get(str_c(., '_final_fit'))) %>%
+  map(~get_prediction_dataframes(., train_data))
+
+#give list elements names
+names(model_preds_dfs) <- mdl_list
+
+#plot performance
+plot_performance_curves(model_preds_dfs, unlist(mdl_list))
+```
+
+# Calibration Plots
+```{r compare calibrations}
+
+#add model name
+cal_df <- model_preds_dfs %>%
+  map2_df(names(model_preds_dfs), function(df, mdl_name){mutate(df, mdl_name=mdl_name)})
+
+#plot calibration curves
+plot_calibration_curve(cal_df)
+
+```
+
 
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
-fs::file_copy('54-cv-comparison.nb.html', './html_results/54-cv-comparison.nb.html', overwrite=TRUE)
+#fs::file_copy('55-cv-comparison.nb.html', './html_results/55-cv-comparison.nb.html', overwrite=TRUE)
 ```
 
