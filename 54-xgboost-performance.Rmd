@@ -34,6 +34,9 @@ Let's first evaluate the performance using the cross-validation metrics from bef
 ```{r best model cross validation}
 #get best xgboost metrics
 best_xgb_fold_metrics <- calculate_best_performance_metrics(xgb_fold_metrics, best_xgb_params)
+best_xgb_fold_metrics %>%
+  group_by(.metric) %>% 
+  summarize(overall_perf = mean(.estimate))
 ```
 
 ## Performance on training data as a whole
@@ -78,11 +81,12 @@ plot_calibration_curve(xgb_training_preds)
 ```{r visualize the ROC curves}
 plot_performance_curves(xgb_training_preds, model_names='xgboost',pos_class='exp')
 ```
+```{r a sense of xgb thresholding}
+plot_label_by_score(xgb_training_preds)
+```
 
 
 # Save markdown file
-Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
 fs::file_copy('54-xgboost-performance.nb.html', './html_results/54-xgboost-performance.nb.html', overwrite=TRUE)
-
-
+```
