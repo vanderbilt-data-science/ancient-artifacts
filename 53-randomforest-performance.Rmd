@@ -10,16 +10,21 @@ output:
 
 In this notebook, we will look at the peformance of the randomForest modeling strategy.
 
-**Note that prior to running this notebook, 10, 40, and 46-randomForest-modeling must already have been run.**
+**Note that prior to running this notebook 46-randomForest-modeling must already have been run to generate new results.**
 
-
-### Useful packages
-```{r load packages, results='hide'}
+```{r load required packages, results='hide'}
 #load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
 source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
 fs::file_delete("50-reporting.R")
 
-pacman::p_load(glmnet, tictoc, vip, tidytext, ranger)
+pacman::p_load(vip, tidytext, ranger)
+```
+
+# Load Saved Data
+```{r load saved random forest}
+#move_model_info('rf', 'load')
 ```
 
 # Selected Model Performance Evaluation
