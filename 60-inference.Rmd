@@ -93,6 +93,8 @@ predict_with_models <- function (model_workflow, model_best_params, test_data) {
        description = "Predicition must be experimental or site")
     assert(model_training_preds, (in_set(c("exp", "site") ) ), particle_class, 
        description = "Predicition must be experimental or site")
+    
+    return(model_training_preds)
 
 }
 ```
@@ -100,37 +102,44 @@ predict_with_models <- function (model_workflow, model_best_params, test_data) {
 #Identify particles which require review 
 
 ```{r identify particles of concern}
-review_particles <-function (pred_frame) {
+review_particles_mismatch <-function (pred_frame) {
   
   ##model thought it was a particle class with more than 50% confidence and got it incorrect
   mismatched_particles <- pred_frame %>%
-    filter(particle_class = "exp" & .pred_site >= 0.5 ) %>%
-    filter(particle_class = "site" & .pred_exp >= 0.5 )
+    filter(particle_class == "exp" & .pred_site >= 0.5 ) %>%
+    filter(particle_class == "site" & .pred_exp >= 0.5)
+  
+  return(mismatched_particles)
+  
+}
+
+review_particles_questionable <-function (pred_frame) {
   
   ##model was unsure about a particle's class
   questionable_particles <- pred_frame %>%
     filter(.pred_exp >= 0.49 & .pred_exp <= 0.51 ) %>%
     filter(.pred_site >= 0.49 & .pred_site <= 0.51 )
   
+  return(questionable_particles)
+  
 }
+  
 ```
 
 #Output the percentage of microdebitage estimated in the sample
 
 ```{r percentage microdebitage function}
+
+
 percent_microdebitage <- function(pred_frame) {
   
- microdeb_count <- 
-   pred_frame %>%
-    count(.pred_class = "exp") 
-    
-   totalpart_count <- 
-    pred_frame %>%
-      count(.pred_class) %>%
-      summarise(total = sum(n))
-   
-  return((microdeb_count / totalpart_count) * 100)
   
+ microdeb_count <- sum(pred_frame$.pred_class == "exp") 
+    
+ totalpart_count <- sum(pred_frame$.pred_class == "exp" ) + sum(pred_frame$.pred_class == "site" )
+
+  return( (100*(microdeb_count / totalpart_count)) )
 }
+
 ```
 
