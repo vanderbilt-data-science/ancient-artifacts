@@ -13,8 +13,10 @@ source(knitr::purl("10-load-data.Rmd"))
 fs::file_delete("10-load-data.R")
 
 #load in required packages for here
-pacman::p_load(tidymodels, usemodels, doParallel)
+pacman::p_load(tidymodels, usemodels, doParallel, doFuture)
 registerDoParallel()
+#registerDoFuture() #accre compat
+#plan(future::multisession, workers=11)
 ```
 
 # Split the data
@@ -35,6 +37,51 @@ Here, I'll add the cross validation splits for tuning.  We'll use 5 fold cross-v
 cv_folds <- vfold_cv(train_data, v=5, strata=particle_class)
 cv_folds
 ```
+
+# Model saving and loading
+This section is for generalized model and related data saving and loading (moving).
+```{r save model}
+move_model_info <- function(model_prefix, move_type='save', file_post=NULL, box_dir=NULL) {
+  #Function move_model_info: loads or saves model data to/from Box
+  #Inputs: model_prefix: String of prefix of model variable name (e.g., 'glmnet', 'nb', etc)
+  #        move_type: String 'load' or 'save'.  To load or save model-related data from/to Box
+  #        file_post: String of information to add to the end of the filename
+  #        box_dir: String of directory base of where you want to save.  By default, it will save to the shared Box drive.
+  #Outputs: move_type 'load' load variable information into the global environment.  'save' changes nothing in global env.
+  #Returns: String of the model loaded from/saved to
+  
+  #find the base save directory
+  if(is.null(box_dir)){
+    box_dir <- tryCatch({
+      box_dir = get('box_base', envir=.GlobalEnv)
+      box_dir
+    }, error = function(){
+      message("Didn't find box_base in the global environment...using ~/Box/DSI_AncientArtifacts/...")
+      path.expand('~/Box/DSI_AncientArtifacts/')
+    })
+  }
+  
+  #Fix the filename
+  rdata_name <- str_c(box_dir, 'RData/', model_prefix, '_modeling_info', file_post, '.RData')
+  
+  #load or save to or from the global environment
+  if(move_type=='load'){
+    load(rdata_name, envir=.GlobalEnv)
+  }
+  else if (move_type=='save'){
+    save_params <- c(str_c(model_prefix, '_fold_metrics'),
+                     str_c('best_', model_prefix, '_params'),
+                     str_c(model_prefix, '_final_fit'))
+    save(list=save_params, file=rdata_name, envir=.GlobalEnv)
+  }
+  else {
+    stop("'load' and 'save' are the only two acceptable values for the move_type.")
+  }
+  
+  return(rdata_name)
+}
+```
+
 
 
 

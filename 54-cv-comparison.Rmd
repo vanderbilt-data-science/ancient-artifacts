@@ -1,0 +1,74 @@
+---
+title: "54-cv-comparison"
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: true
+---
+
+In this notebook, we compare the effectiveness of the various model types based on the performance of cross validation metrics. 
+
+**Note that prior to running this notebook, 10, 40, and the various model files must already have been run.**
+
+### Useful packages
+```{r glmnet specific modeling packages, results='hide'}
+pacman::p_load(glmnet, tictoc, vip, tidytext, ranger)
+```
+
+
+```{r aggregating hyperparameter tuning/cross validation metrics}
+best_rf_fold_metrics <- calculate_best_performance_metrics(rf_fold_metrics, best_rf_params) %>%
+  select(id, .metric, .estimate, .config) %>%
+  mutate(modeltype = "rf")
+
+best_nb_fold_metrics <- calculate_best_performance_metrics(nb_fold_metrics, best_nb_params) %>%
+  select(id, .metric, .estimate, .config) %>%
+  mutate(modeltype = "nb")
+
+best_xgb_fold_metrics <- calculate_best_performance_metrics(xgb_fold_metrics, best_xgb_params) %>%
+  select(id, .metric, .estimate, .config) %>%
+  mutate(modeltype = "xgb")
+
+best_glmnet_fold_metrics <- calculate_best_performance_metrics(glmnet_fold_metrics, best_glmnet_params) %>% 
+  select(id, .metric, .estimate, .config) %>%
+  mutate(modeltype = "glmnet")
+
+best_fold_metrics <- bind_rows(best_rf_fold_metrics, best_nb_fold_metrics, best_xgb_fold_metrics, best_glmnet_fold_metrics) 
+
+head(best_fold_metrics, 10)
+```
+
+## Basic performance overview
+Let's just look at the overall (fold-less) distribution of the metrics.
+```{r overall performance}
+best_fold_metrics %>%
+  mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
+  ggplot(aes(x=.metric, y=.estimate, fill=modeltype)) +
+  geom_boxplot(outlier.colour = 'red', na.rm=TRUE) +
+  facet_wrap(facet='.metric', scales='free', nrow=2) + 
+  labs(title='Comparison of performance of CV metrics between 4 model types',
+       subtitle='By fold and metric',
+       x='metric',
+       y='metric distribution') +
+  scale_x_discrete(labels=NULL)
+
+```
+The general observations here pretty much mirror those of the kfold-separated performance plot above.  This is expected.
+```{r}
+best_fold_metrics %>%
+  group_by(modeltype, .metric) %>%
+  summarise(mean_value = mean(.estimate, na.rm = TRUE)) %>%
+  ggplot(mapping = aes(x=.metric, y=mean_value, fill = modeltype))+
+    geom_col(position = "dodge")
+  
+```
+
+
+# Save markdown file
+Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
+```{r save markdown}
+fs::file_copy('54-cv-comparison.nb.html', './html_results/54-cv-comparison.nb.html', overwrite=TRUE)
+```
+

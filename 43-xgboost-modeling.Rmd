@@ -10,10 +10,12 @@ output:
 
 In this notebook, we use xgboost to perform modeling.  Our general approach will be to use hyperparameter tuning via cross-validation to identify the best performing hyperparameters,  In another notebook, we will investigate the performance of the model.
 
-**Note that prior to running this notebook, 10 and 40 must already have been run.**
-
 ### Useful packages
 ```{r xgb specific modeling packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
+fs::file_delete("40-modeling.R")
+
 pacman::p_load(glmnet, tictoc, vip, tidytext, xgboost, recipes, parsnip)
 ```
 
@@ -260,6 +262,10 @@ Here, we can see that transparency is weighted as drastically important compared
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
 fs::file_copy('43-xgboost-modeling.nb.html', './html_results/43-xgboost-modeling.nb.html', overwrite=TRUE)
+```
+
+```{r save xgboost model to box}
+#move_model_info('xgb', 'save')
 ```
 
 

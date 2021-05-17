@@ -11,24 +11,29 @@ output:
 
 In this notebook we explore the performance of the Xgboost model. Additionally, we will confirm the behavior of cross validation and hyperparameter tuning. 
 
-**Make sure you run notebooks 10, 40, and the 43-xgboost-modeling notebook before attempting to run this notebook**
+**Make sure you run the 43-xgboost-modeling notebook before attempting to run this notebook if you want to generate new results.**
 
-### Useful packages
-```{r load packages, results='hide'}
+```{r load required packages, results='hide'}
 #load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
 source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
 fs::file_delete("50-reporting.R")
 
-pacman::p_load(xgboost,recipes, parsnip)
+pacman::p_load(vip,xgboost,recipes, parsnip)
 ```
 
+# Load Saved Data
+```{r load saved xgboost}
+#move_model_info('xgb', 'load')
+```
 
 # Selected Model Performance Evaluation
 ## Cross validation metrics from best model
 Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
 ```{r best model cross validation}
 #get best xgboost metrics
-best_xgb_fold_metrics <- calculate_best_performance_metrics(xgb_fold_metrics, xgb_best_params)
+best_xgb_fold_metrics <- calculate_best_performance_metrics(xgb_fold_metrics, best_xgb_params)
 ```
 
 ## Performance on training data as a whole
@@ -65,6 +70,15 @@ xgb_vip %>%
 ```
 
 Here, we can see that transparency is weighted as drastically important compared to all of the other factors followed by solidity and f_length. All of the other factors aside from these 3 are weighted as fairly similar in importance.
+
+```{r visualize the model calibraton}
+plot_calibration_curve(xgb_training_preds)
+```
+
+```{r visualize the ROC curves}
+plot_performance_curves(xgb_training_preds, model_names='xgboost',pos_class='exp')
+```
+
 
 # Save markdown file
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**

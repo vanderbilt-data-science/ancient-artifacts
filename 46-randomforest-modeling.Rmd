@@ -10,16 +10,18 @@ output:
 
 In this notebook, we use random forest to perform modeling.  Our general approach will be to use hyperparameter tuning via cross-validation to identify the best performing hyperparameters,  In another notebook, we will investigate the performance of the model.
 
-**Note that prior to running this notebook, 10 and 40 must already have been run.**
-
 ### Useful packages
-```{r glmnet specific modeling packages, results='hide'}
+```{r rf specific modeling packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
+fs::file_delete("40-modeling.R")
+
 pacman::p_load(glmnet, tictoc, vip, tidytext, ranger)
 ```
 
 # RF tidymodels specifications
 The following code was used to generate the codebase that you'll find in the chunk that follows.  Some additional steps were included for simplicity in processing during later steps.
-```{r generate glmnet recipe and general info}
+```{r generate rf recipe and general info}
 #use_glmnet(particle_class ~ ., data=train_data)
 ```
 
@@ -215,5 +217,9 @@ rf_final_fit <- rf_final_wf %>%
 Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
 fs::file_copy('46-randomforest-modeling.nb.html', './html_results/46-randomforest-modeling.nb.html', overwrite=TRUE)
+```
+
+```{r save random forest model to box}
+#move_model_info('rf', 'save')
 ```
 

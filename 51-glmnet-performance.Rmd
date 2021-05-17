@@ -10,15 +10,22 @@ output:
 
 In this notbeook, we explore the performance of the glmnet model.  We additionally confirm the behavior of cross validation and hyperparameter tuning.  We investigate the role of the hyperparameters and their influence on the performance of the models very lightly, but focus on the model deliverable.
 
-**Make sure you run the 41-glmnet-modeling notebook before attempting to run this notebook.**
+**Make sure you run the 41-glmnet-modeling notebook before attempting to run this notebook to generate new results.**
 
-```{r load required packages}
+```{r load required packages, results='hide'}
 #load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
 source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
 fs::file_delete("50-reporting.R")
 
 pacman::p_load(vip)
 ```
+# Load Saved Data
+```{r load saved glmnet}
+#move_model_info('glmnet', 'load', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/'))
+```
+
 
 # Selected Model Performance Evaluation
 ## Cross validation metrics from best model
@@ -26,23 +33,57 @@ Let's first evaluate the performance using the cross-validation metrics from bef
 ```{r best model cross validation}
 
 best_glmnet_fold_metrics <- calculate_best_performance_metrics(glmnet_fold_metrics, best_glmnet_params)
-
+best_glmnet_fold_metrics %>%
+  group_by(.metric) %>% 
+  summarize(overall_perf = mean(.estimate))
 ```
 Here we can see the overall performance of the best model during its cross validation phase.  This performance mirrors the behavior of the previous cross-validation metrics.  The ROC AUC is again looking very stable, while the PR AUC leaves a bit to be desired.  The metrics which rely on threshold are very stable and performant for calculations which rely or focus heavily on the class of disinterest.  On the other hand, the sensitivity and ppv leave much to be desired.  Again, implementing a tailored thresholding strategy here will allow for better use of the model.
 
-## Performance on training data as a whole
-Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
-```{r extract and visualize training performance}
+# Performance on training data as a whole
+## ROC Curve
+Let's start by looking at an ROC curve.
+
+```{r plot glmnet ROC and AUC}
 #get prediction class and probabilities
 hp_training_preds <- get_prediction_dataframes(glmnet_final_fit, train_data)
 
-#calculate confusion matrix
-glmnet_conf_mat <- calculate_confusion_matrix(hp_training_preds)
+plot_performance_curves(hp_training_preds)
 ```
+These are two strongly corner-based curves which is promising.
+
+## Interpretating probability thresholds
+In this section, we gain insight into what we should do for thresholding and our expectations surrounding it.
+```{r}
+plot_label_by_score(hp_training_preds)
+```
+This plot quite nearly suggests that the threshold of 0.5 isn't bad at all for this model.  We might increase the sensitivity if we were to drop the threshold down to about 0.3 (capture all of the 'exp'), but we would really increase our false positives there.
+
+### Distribution-based probability plot
+Here, we look at the distribution of the probabilities based on the class
+
+### Calibration curve
+In this section, we look at the calibration curve of the model.  Calibration curves closer to the 45 degree line demonstrate better calibrated models (e.g., where scores can be interpreted as probabilities).
+
+## Interpretations based on thresholds
+In this section, we look at the threshold that has been chosen for evaluation.  Here, this is 0.5.
+
+```{r investigate misclassification rate}
+plot_misclassification_rates(hp_training_preds)
+```
+Here, we see the same sort of information reflected in the first plot, where the misclassification error seems to start heavily around 0.3.  In that area, we're classifying a lot of things negative that we shouldn't, and flipping things over to 0.5, we start classifying things positive that we shouldn't.
+
+
+### Confusion Matrix
+Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
+```{r extract and visualize training performance}
+conf_mat <- calculate_confusion_matrix(hp_training_preds)
+```
+
+
 These results allow us several important insights:
 1. The confusion matrix reflects the distribution of the data
 2. The calculated metrics correctly reflect the target class formulation
-3. The performance leaves room for improvement in terms of metrics calculated based on a threshold
+3. The performance leaves room for improvement in terms of metrics calculated based on a threshold depending on the objectives of classification.
 
 # Explaining the model
 ## Variable imporance
