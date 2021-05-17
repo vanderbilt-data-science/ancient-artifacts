@@ -101,18 +101,39 @@ predict_with_models <- function (model_workflow, model_best_params, test_data) {
 
 #Identify particles which require review 
 
-```{r identify particles of concern}
-review_particles_mismatch <-function (pred_frame) {
+```{r identify mismatched particles}
+combine_prediction_frames <-function (glmnet_pred_frame, xbg_pred_frame, rf_pred_frame) {
   
-  ##model thought it was a particle class with more than 50% confidence and got it incorrect
-  mismatched_particles <- pred_frame %>%
-    filter(particle_class == "exp" & .pred_site >= 0.5 ) %>%
-    filter(particle_class == "site" & .pred_exp >= 0.5)
+  combined_pred_frame <- data.frame(id = seq.int(nrow(glmnet_pred_frame)),
+                                  glm = glmnet_pred_frame$.pred_class,
+                                  xgb = xgb_pred_frame$.pred_class,
+                                  rf = rf_pred_frame$.pred_class
+                        )
+
+  return (combined_pred_frame)
+}
+
+review_particles_mismatch <-function (combined_pred_frame) {
   
+combined_pred_frame$count.exp <- apply(combined_pred_frame[2:4], 1, function(x) length(which(x=="exp")))
+
+mismatched_particles <- combined_pred_frame %>%
+    filter(count.exp == 2 | count.exp == 1)
+
+
+mismatched_particles$majority <- ifelse(mismatched_particles$count.exp==2, "exp", "site")
+
+
+
+
   return(mismatched_particles)
   
 }
 
+```
+
+
+```{r identify particles of concern}
 review_particles_questionable <-function (pred_frame) {
   
   ##model was unsure about a particle's class
@@ -123,8 +144,10 @@ review_particles_questionable <-function (pred_frame) {
   return(questionable_particles)
   
 }
-  
+
+
 ```
+
 
 #Output the percentage of microdebitage estimated in the sample
 
@@ -132,7 +155,6 @@ review_particles_questionable <-function (pred_frame) {
 
 
 percent_microdebitage <- function(pred_frame) {
-  
   
  microdeb_count <- sum(pred_frame$.pred_class == "exp") 
     
