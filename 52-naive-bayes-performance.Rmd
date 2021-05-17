@@ -56,43 +56,8 @@ Here we see there were roughly 7,500 particles that we truly site particles that
 ## Variable imporance
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
 
-```{r naive bayes variable importance, fig.height=6}
-nb_vip <- nb_final_fit %>%
-  pull_workflow_fit()
-  
-nb_vip <- caret::filterVarImp( x= nb_vip$fit$data$x , y = nb_vip$fit$data$y) 
-nb_vip <- as.data.frame(nb_vip)
-
-nb_vip <- rownames_to_column(nb_vip)
-names(nb_vip)[1] <- "var"
-
-nb_vip <- nb_vip %>% 
-  mutate(var = fct_reorder(var, exp))
-
-ggplot(nb_vip, aes(x=var, y=exp)) +
-  geom_col() +
-  coord_flip() +
-    labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Smoothness:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable')
-  
-#+#nb_vip %>%
-#  ggplot(aes(x=exp, y=site, fill=association))+
-#  geom_col() 
-#  coord_flip() +
-#  labs(title='Scaled coefficient magnitudes of glmnet',
-#       subtitle=str_c('Penalty:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
-#                                         digits=5, nsmall=2, scientific=TRUE),
-#                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
-#                                         digits=5, nsmall=3),
-#                      sep=' '),
-#       y='scaled absolute importance',
-#       x='variable')
+```{r nb variable importance, fig.height=6}
+nb_vip <- plot_variable_importance(nb_final_fit, newdata=train_data, mdl_name = 'nb', positive_class='site')
 ```
 Here we can clearly see a common thread through many of the models. The Naive bayes model also weighted transparency incredibly high followed by the typical compactness, roundness, and l_t_ratio which were also common candidates for high importance variables. 
 

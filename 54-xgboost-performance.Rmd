@@ -53,23 +53,12 @@ t1 <- calculate_confusion_matrix(xgb_training_preds)
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
 
 ```{r xgb variable importance, fig.height=6}
-xgb_vip <- xgb_final_fit %>%
-  pull_workflow_fit() %>%
-  vi_model() %>%
-  mutate(scaled_imp = Importance/sum(Importance))
+xgb_pred_helper<-function(object, newdata, ...){
+  predict(object, data.matrix(newdata), ...)
+}
 
-xgb_vip %>%
-  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=scaled_imp)) +
-  geom_col() +
-  coord_flip() +
-  labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('mtry:', format(pull_workflow_fit(xgb_final_fit)$spec$args$mtry,
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'min_n:', format(pull_workflow_fit(xgb_final_fit)$spec$args$min_n[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable')
+xgb_vip <- plot_variable_importance(xgb_final_fit, newdata=train_data, mdl_name = 'xgb', positive_class='site',
+                                   pred_wrapper = xgb_pred_helper)
 ```
 
 Here, we can see that transparency is weighted as drastically important compared to all of the other factors followed by solidity and f_length. All of the other factors aside from these 3 are weighted as fairly similar in importance.

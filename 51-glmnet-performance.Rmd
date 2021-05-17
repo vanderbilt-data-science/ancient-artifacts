@@ -18,12 +18,10 @@ source(knitr::purl("40-modeling.Rmd"))
 source(knitr::purl("50-reporting.Rmd"))
 fs::file_delete("40-modeling.R")
 fs::file_delete("50-reporting.R")
-
-pacman::p_load(vip)
 ```
 # Load Saved Data
 ```{r load saved glmnet}
-#move_model_info('glmnet', 'load', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/'))
+move_model_info('glmnet', 'load', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/'))
 ```
 
 
@@ -91,26 +89,16 @@ These results allow us several important insights:
 
 # Explaining the model
 ## Variable imporance
-What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
+What parameters are contributing most strongly to the classification?  We'll use permutation importance for this.
 
 ```{r glmnet variable importance, fig.height=6}
-glmnet_vip <- glmnet_final_fit %>%
-  pull_workflow_fit() %>%
-  vi_model(lambda = .$spec$args$penalty) %>%
-  mutate(scaled_imp = Importance/sum(Importance)) %>%
-  mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
-glmnet_vip %>%
-  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
-  geom_col() +
-  coord_flip() +
-  labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable')
+glmnet_pred_helper<-function(object, newdata, ...){
+  predict(object, newx=as.matrix(newdata), ...)
+}
+glmnet_vip <- plot_variable_importance(glmnet_final_fit, newdata=train_data, mdl_name = 'glmnet',
+                                       positive_class='site',
+                                       pred_wrap=glmnet_pred_helper,
+                                       lambda=glmnet_final_fit$fit$fit$spec$args$penalty)
 ```
 Of previous interest was transparency, solidity, and other metrics for discerning the different classes.  Here, we can make several observations:
 

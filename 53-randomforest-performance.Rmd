@@ -76,24 +76,13 @@ rf_conf_mat <- calculate_confusion_matrix(rf_training_preds)
 ## Variable imporance
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
 
-```{r glmnet variable importance, fig.height=6}
-rf_vip <- rf_final_fit %>%
-  pull_workflow_fit() %>%
-  vi_model() %>%
-  mutate(scaled_imp = Importance/sum(Importance)) 
+```{r rf variable importance, fig.height=6}
+rf_pred_helper<-function(object, newdata, ...){
+  predict(object, data=newdata, ...)$predictions #help from https://koalaverse.github.io/vip/articles/vip.html
+}
 
-rf_vip %>%
-  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=scaled_imp)) +
-  geom_col() +
-  coord_flip() +
-  labs(title='Variable Importance in Random Forest',
-       subtitle=str_c('Mtry:', format(pull_workflow_fit(rf_final_fit)$spec$args$mtry,
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'Min_n:', format(pull_workflow_fit(rf_final_fit)$spec$args$min_n[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable')
+rf_vip <- plot_variable_importance(rf_final_fit, newdata=train_data, mdl_name = 'rf', positive_class='exp',
+                                   pred_wrapper = rf_pred_helper)
 ```
 Transparency holds the greatest importance for these models and for determining microdebitage, followed by fiber_length, f_length, and e_length. As discussed in the coding meeting, these last three variables should be investigated to see if one of these length variables holds the most importance (to the extent that the other two variables derive their importance only in their relationship to this dominant length variable). 
 
