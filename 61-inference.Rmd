@@ -1,26 +1,38 @@
 ---
 title: "61-inference"
-output: html_notebook
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: true
 ---
 
 > A framework for predicting across multiple models
 
 # Overview and Usage
 
-This notebook provides inference for PartAn data, and uses your built models by the mechanisms documented in the 40 and 50 series notebooks.  This functionality uses your (potentially) unlabeled data to make predictions to classify your particles into your desired classes.  An example will be provided in the `62-inference-demo.Rmd` notebook provided.
+This notebook provides inference for PartAn data, and uses your built models by the mechanisms documented in the 40 and 50 series notebooks.  This functionality uses your (potentially) unlabeled data to make predictions to classify your particles into your desired classes.  An example will be provided in the `61-inference-demo.html` document provided.
 
 ## Pre-requisites for out-of-the-box usage
 
 This code requires the following:
-* **Data location**:  PartAn data should be stored on Box, and accessible via Box Sync (Box mounted locally on your computer).  You can find more information about this here: https://support.box.com/hc/en-us/articles/360043697194-Installing-Box-Sync .  If you choose not to load the data in this manner, you can load the raw data in another notebook and make sure to assign it to the variable name `data_raw`.
-* **Model data**: This code assumes that you've stored your models in an `RData` subdirectory of your main directory on Box and in an `.RData` format.  It additionally assumes that you've saved final tidymodels workflow fits in a particular standard naming format.  If you haven't done this, you'll need to make changes to either your model names or create your own functions where the code fails due to the standardized naming conventions we've adopted.
+
+* **Data location**:  PartAn data should be stored on Box, and accessible via Box Sync (Box mounted locally on your computer).  You can find more information about this here: https://support.box.com/hc/en-us/articles/360043697194-Installing-Box-Sync .  The expected file format is a csv.  If your data is not stored in this location, you can overwrite the name of the calculated filename in the code below.
+* **Model data**: This code assumes:
+  * You've stored your models in an `RData` subdirectory of your main directory on Box and in an `.RData` format, with name _modelprefix_\_modeling_info.RData.  Your _modelprefix_ will be used heavily here, so pick something descriptive.  Good examples discern the models (e.g., `glmnet`, `nb`).  See below for details.
+  * Your saved final tidymodels workflow is named _modelprefix_\_final_fit within your .RData file.
+
+The location of the data is relatively flexible, but currently, the model storage format on Box and naming conventions are inflexible.  It is recommended to adhere to these suggestions unless you're skilled with R and can identify what you need to change within the code.
+  
 
 ## Using this code
 In the options section below, you'll see provided some empty areas for where you'll add the filepath your data and models.  Make sure to fill these in along with any other options indicated.
 
-Then, Run All Chunks.  The results will be displayed inline.  After the results are produced, save this file, which will automatically be converted into an html document with the name `60-inference.nb.html`.
+Then, Run All Chunks.  The results will be displayed inline.  After the results are produced, save this file, which will automatically be converted into an html document with the name `61-inference.nb.html`.
 
 # Options
+Set your filepath and class prediction settings here.  Some examples are provided.
 ```{r set inference options}
 #box directory (e.g., 'Volcano_Project' or 'DSI_AncientArtifacts', etc.)
 box_directory <- 'DSI_AncientArtifacts'
@@ -38,46 +50,50 @@ target_class <- 'exp'
 ```
 
 # Load and validate data 
+In this section, the filepaths are calculated and the data is loaded.  If you need to change filepaths here, you can do this by manually setting the `project_files` variable named list values (`base_dir`, `data_path`, and `models_dir`).
 ```{r load and validate data}
 project_files <- set_inference_filepaths(box_directory, data_filepath)
 
 # load and fix partAn file to dataframe
-test_data <- load_data(project_files['data_path'])
+test_data <- load_data(project_files[['data_path']])
 
 # validate data
 validate_data(test_data)
 ```
 
 # Load models
+In this step, we load all of the models from the model directory.  If you need to set a different model directory, you can also do this here.  However, you will want to make sure that your RData files within have the correct format (_modelprefix_\_modeling_info.Rdata).
 ```{r load models}
 #using box path, load listed models
-map(~load_model(., models_dir =project_files['models_dir']))
+map(~load_model(., models_dir = project_files['models_dir']))
 ```
 
 
 # Get predictions using all loaded models
-
+Here, we get the predictions from all of the models on the test data.  You can peruse the results in the table below.
 ```{r predict on the data using the provided models}
 preds_list <- predict_with_models(model_prefix_list, test_data)
 preds_list
 ```
 
 # Predict classes by model voting 
-
+In this section, we build the dataframe which will allow models to "cast votes" about the predicted class.  
 ```{r identify questionable particles}
+#build dataframe of joined predictions per sample (wide format for simple perusing)
 preds_corr <- get_pred_correspondence(preds_list)
 preds_corr
 ```
+This section explicitly produces the voting effect.  The `particle_matches` list has 3 dataframes.  The `agreements` dataframe lists all particles where all models completely agreed on the class.  The `disagreements` dataframe shows where there was disagreements between models.  For both of these dataframes, `agreement_degree` shows the extent to which models agreed (e.g. 0.5 for 2 models means that the models completely disagreed; 0.66 for 3 models means that 2 models agreed).  `mdl_class_pred` shows the majority predicted class (given that an unequal number of models is present), or arbitrarily chooses a class if the votes are equally split. 
 
 ```{r identify matched and mismatched particles across models}
-
 particle_matches <- review_particles(preds_corr)
 particle_matches[['agreements']]
 particle_matches[['disagreements']]
 
 ```
 
-#Output the percentage of microdebitage estimated in the sample
+# Identify target class particles and estimate sample composition
+In this section, the particles which were classified as the target are extracted into their own dataframe.  The percentage sample composition of these target particles is also reported.
 
 ```{r extracting target particles function}
 target_particles <- extract_targets(particle_matches, 'target_class', agree_thresh = 0.75)
