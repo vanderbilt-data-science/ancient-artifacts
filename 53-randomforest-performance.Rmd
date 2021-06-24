@@ -24,7 +24,7 @@ pacman::p_load(vip, tidytext, ranger)
 
 # Load Saved Data
 ```{r load saved random forest}
-#move_model_info('rf', 'load')
+move_model_info('rf', 'load');
 ```
 
 # Selected Model Performance Evaluation
@@ -52,12 +52,14 @@ Let's start by looking at an ROC curve.
 ```{r plot rf ROC and AUC}
 plot_performance_curves(rf_training_preds)
 ```
+These are outrageously good ROC/PRC curves.  Suspiciously good.
 
 ## Interpretating probability thresholds
 In this section, we gain insight into what we should do for thresholding and our expectations surrounding it.
 ```{r}
 plot_label_by_score(rf_training_preds)
 ```
+This plot demonstrates that the model has really great classification capabilities; however, the threshold of 0.5 is clearly not optimal.  A threshold closer to about 0.48 might result in better classification accuracy as this is where the true delineation appears to occur.
 
 ### Calibration curve
 In this section, we look at the calibration curve of the model.  Calibration curves closer to the 45 degree line demonstrate better calibrated models (e.g., where scores can be interpreted as probabilities).
@@ -65,6 +67,7 @@ In this section, we look at the calibration curve of the model.  Calibration cur
 ```{r glmnet calibration curve}
 plot_calibration_curve(rf_training_preds, mdl_name='rf')
 ```
+This model seems to demonstrate a traditional s-shaped calibration curve, meaning that it overestimates probabilities under 0.5 and underestimates those for >0.5.  This model may benefit from additional score adjustment strategies.
 
 ## Applied probability thresholds
 ```{r confusion matrix}
@@ -74,15 +77,10 @@ rf_conf_mat <- calculate_confusion_matrix(rf_training_preds)
 
 # Explaining the model
 ## Variable imporance
-What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
+What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!  Note that this cell for random forest takes a while to run.
 
 ```{r rf variable importance, fig.height=6}
-rf_pred_helper<-function(object, newdata, ...){
-  predict(object, data=newdata, ...)$predictions #help from https://koalaverse.github.io/vip/articles/vip.html
-}
-
-rf_vip <- plot_variable_importance(rf_final_fit, newdata=train_data, mdl_name = 'rf', positive_class='exp',
-                                   pred_wrapper = rf_pred_helper)
+rf_vip <- plot_variable_importance(rf_final_fit, assessment_data=train_data, mdl_name = 'rf', positive_class='exp')
 ```
 Transparency holds the greatest importance for these models and for determining microdebitage, followed by fiber_length, f_length, and e_length. As discussed in the coding meeting, these last three variables should be investigated to see if one of these length variables holds the most importance (to the extent that the other two variables derive their importance only in their relationship to this dominant length variable). 
 

@@ -21,7 +21,7 @@ fs::file_delete("50-reporting.R")
 ```
 # Load Saved Data
 ```{r load saved glmnet}
-move_model_info('glmnet', 'load', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/'))
+#move_model_info('glmnet', 'load');
 ```
 
 
@@ -63,7 +63,7 @@ Here, we look at the distribution of the probabilities based on the class
 In this section, we look at the calibration curve of the model.  Calibration curves closer to the 45 degree line demonstrate better calibrated models (e.g., where scores can be interpreted as probabilities).
 
 ```{r glmnet calibration curve}
-plot_calibration_curve(hp_training_preds, mdl_name='glmnet')
+plot_calibration_curve(hp_training_preds)
 ```
 
 ## Interpretations based on thresholds
@@ -83,8 +83,7 @@ conf_mat <- calculate_confusion_matrix(hp_training_preds)
 
 
 These results allow us several important insights:
-#glmnet_pred_helper<-function(object, newdata, ...){
-#  predict(object, newx=as.matrix(newdata), type='response', ...)1. The confusion matrix reflects the distribution of the data
+1. The confusion matrix reflects the distribution of the data
 2. The calculated metrics correctly reflect the target class formulation
 3. The performance leaves room for improvement in terms of metrics calculated based on a threshold depending on the objectives of classification.
 
@@ -93,10 +92,8 @@ These results allow us several important insights:
 What parameters are contributing most strongly to the classification?  We'll use permutation importance for this.
 
 ```{r glmnet variable importance, fig.height=6}
-glmnet_vip <- plot_variable_importance(glmnet_final_fit, assessment_data=test_data, mdl_name = 'glmnet',
-                                       positive_class='site',
-                                       pred_wrap=NULL,
-                                       nothing=glmnet_final_fit$fit$fit$spec$args$penalty)
+glmnet_vip <- plot_variable_importance(glmnet_final_fit, assessment_data=train_data, mdl_name = 'glmnet',
+                                       positive_class='exp')
 ```
 Of previous interest was transparency, solidity, and other metrics for discerning the different classes.  Here, we can make several observations:
 

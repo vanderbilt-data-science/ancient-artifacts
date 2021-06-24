@@ -25,7 +25,7 @@ pacman::p_load(vip,xgboost,recipes, parsnip)
 
 # Load Saved Data
 ```{r load saved xgboost}
-#move_model_info('xgb', 'load')
+#move_model_info('xgb', 'load');
 ```
 
 # Selected Model Performance Evaluation
@@ -53,29 +53,27 @@ t1 <- calculate_confusion_matrix(xgb_training_preds)
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
 
 ```{r xgb variable importance, fig.height=6}
-xgb_pred_helper<-function(object, newdata, ...){
-  predict(object, data.matrix(newdata), ...)
-}
-
-xgb_vip <- plot_variable_importance(xgb_final_fit, newdata=train_data, mdl_name = 'xgb', positive_class='site',
-                                   pred_wrapper = xgb_pred_helper)
+xgb_vip <- plot_variable_importance(xgb_final_fit, assessment_data=train_data, mdl_name = 'xgb', positive_class='exp')
 ```
 
-Here, we can see that transparency is weighted as drastically important compared to all of the other factors followed by solidity and f_length. All of the other factors aside from these 3 are weighted as fairly similar in importance.
+Here, we can see that transparency is weighted as drastically important compared to all of the other factors followed by solidity. All of the other factors aside from these 3 are weighted as fairly similar in importance.
 
 ```{r visualize the model calibraton}
 plot_calibration_curve(xgb_training_preds)
 ```
+This calibration curve suggests a pretty well calibrated model, particularly in the low probabilities.  As the probabilities increase, the model becomes a little under-confident in its prediction probabilities (predicts probabilities that are a little lower than they should be.  This does occur around 0.42, meaning that probabilities around this area may need to be investigated for this model.
 
 ```{r visualize the ROC curves}
 plot_performance_curves(xgb_training_preds, model_names='xgboost',pos_class='exp')
 ```
+These curves reflect relatively good training performance.  This shows that this model type is able to learn on this data.
+
 ```{r a sense of xgb thresholding}
 plot_label_by_score(xgb_training_preds)
 ```
-
+These results suggest that the threshold of 0.5 seems to be about right for general purpose investigation and further changes to this threshold will need to be based on the use-case.
 
 # Save markdown file
 ```{r save markdown}
-fs::file_copy('54-xgboost-performance.nb.html', './html_results/54-xgboost-performance.nb.html', overwrite=TRUE)
+#fs::file_copy('54-xgboost-performance.nb.html', './html_results/54-xgboost-performance.nb.html', overwrite=TRUE)
 ```

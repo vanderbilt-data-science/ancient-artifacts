@@ -212,8 +212,8 @@ The [0.3.2 documentation of vi_permute.R](https://rdrr.io/cran/vip/src/R/vi_perm
 
 
 ```{r generic plot for variable importance}
-plot_variable_importance <- function(wkflw, assessment_data, mdl_name=NULL, pred_wrap=predict, plot_type='default',
-                                     p_metric='auc', target='particle_class', positive_class='exp', smaller_is_better=NULL,...){
+plot_variable_importance <- function(wkflw, assessment_data, mdl_name=NULL, plot_type='default',
+                                     p_metric='auc', target='particle_class', positive_class='exp', smaller_is_better=NULL){
   #Function plot_variable_importance plots permutation importance
   #Inputs: wkflw: fitted final fit (workflow object)
   #        newdata: raw tibble to be processed with recipe and then predicted on
@@ -241,45 +241,33 @@ plot_variable_importance <- function(wkflw, assessment_data, mdl_name=NULL, pred
   #get fit
   mdl <- wkflw
   mdl_recipe <- pull_workflow_prepped_recipe(mdl)
-  mdl_fit <- wkflw$fit$fit$fit
-  
-  #apply recipe to dataset
-  baked_data <- bake(mdl_recipe, assessment_data)
-  
-  #drop columns which aren't modeled
-  keep_cols <- mdl_recipe$var_info %>%
-    filter(role=='predictor' | role=='outcome') %>%
-    pull(variable)
-  
-  prepped_data <- baked_data %>%
-    select(all_of(keep_cols))
   
   pred_wrapper<-function(object, newdata, ref_cls = positive_class){
     #message('here')
     #print(colnames(new_data))
-    #predict(object, new_data=newdata, type='class')
-    res <- predict(object, new_data=newdata, type='class')
-    pred_vec <- ifelse(res$.pred_class==ref_cls, yes=1, no=0)
-    print(pred_vec[1:10])
+    #res <- predict(object, new_data=newdata, type='class')
+    #pred_vec <- ifelse(res$.pred_class==ref_cls, yes=1, no=0)
+    
+    res <- predict(object, new_data=newdata, type='prob')
+    pred_vec <- res %>%
+      select(contains(ref_cls)) %>%
+      pull()
+      
     return (pred_vec)
   }
-  
-   #workaround for glmnet
-  # if((...length()!=0) & (names(list(...))=='lambda'))
-  # {
-  #   lambda_val = list(...)[['lambda']]
-  #   pred_wrapper <- function(object, newdata, lambda=eval(lambda_val))
-  #   {
-  #     pred_wrap(object, newdata, s=lambda, ...)
-  #   }
-  # } else {
-  #   pred_wrapper <- pred_wrap
-  # }
   
   #get permutation importance
   vip_res <- vi_permute(object=mdl, train=assessment_data, target=target,
                         metric=p_metric, pred_wrapper=pred_wrapper, reference_class=positive_class,
                         smaller_is_better=smaller_is_better, new_data=assessment_data)
+  
+  #drop rows which aren't modeled
+  keep_cols <- mdl_recipe$var_info %>%
+    filter(role=='predictor' | role=='outcome') %>%
+    pull(variable)
+  
+  vip_res <- vip_res %>%
+    filter(Variable %in% keep_cols)
   
   #determine plot base
   if(plot_type=='default'){
