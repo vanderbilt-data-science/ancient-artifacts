@@ -31,6 +31,14 @@ In the options section below, you'll see provided some empty areas for where you
 
 Then, Run All Chunks.  The results will be displayed inline.  After the results are produced, save this file, which will automatically be converted into an html document with the name `61-inference.nb.html`.
 
+## Import relevant source code and packages
+You shouldn't need to make any changes here.
+```{r load packages and source}
+source(knitr::purl("60-inference-helpers.Rmd"))
+fs::file_delete("60-inference-helpers.R")
+```
+
+
 # Options
 Set your filepath and class prediction settings here.  Some examples are provided.
 ```{r set inference options}
@@ -42,17 +50,19 @@ box_directory <- 'DSI_AncientArtifacts'
 data_filepath <- NULL
 
 #provide a list of the prefixes for your final model fits, e.g., 'glmnet', 'nb', etc.  This must be a list, even if it is one single model.
-model_prefix_list <- list('glmnet', 'nb', 'rf', 'xgb')
+model_prefix_list <- list('glmnet', 'rf', 'xgb')
 #model_prefix_list = []
 
 target_class <- 'exp'
 #reference_class <- NULL
+
 ```
 
 # Load and validate data 
 In this section, the filepaths are calculated and the data is loaded.  If you need to change filepaths here, you can do this by manually setting the `project_files` variable named list values (`base_dir`, `data_path`, and `models_dir`).
 ```{r load and validate data}
 project_files <- set_inference_filepaths(box_directory, data_filepath)
+project_files['data_path'] <- 'LithicExperimentalData.csv'
 
 # load and fix partAn file to dataframe
 test_data <- load_data(project_files[['data_path']])
@@ -65,7 +75,8 @@ validate_data(test_data)
 In this step, we load all of the models from the model directory.  If you need to set a different model directory, you can also do this here.  However, you will want to make sure that your RData files within have the correct format (_modelprefix_\_modeling_info.Rdata).
 ```{r load models}
 #using box path, load listed models
-map(~load_model(., models_dir = project_files['models_dir']))
+model_prefix_list %>%
+  map(~load_model(., models_dir = project_files[['models_dir']]))
 ```
 
 
@@ -96,7 +107,7 @@ particle_matches[['disagreements']]
 In this section, the particles which were classified as the target are extracted into their own dataframe.  The percentage sample composition of these target particles is also reported.
 
 ```{r extracting target particles function}
-target_particles <- extract_targets(particle_matches, 'target_class', agree_thresh = 0.75)
+target_particles <- extract_targets(particle_matches, target_class, agree_thresh = 0.6)
 target_particles
 ```
 

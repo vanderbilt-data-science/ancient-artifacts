@@ -17,7 +17,8 @@ if (!require("pacman"))
 source(knitr::purl("50-reporting.Rmd"))
 fs::file_delete("50-reporting.R")
 
-pacman::p_load(tidyverse, janitor, assertr, forcats, purrr)
+pacman::p_load(tidyverse, janitor, assertr, forcats, purrr, fs,
+               tidymodels, glmnet, ranger, naivebayes, discrim, xgboost)
 ```
 
 
@@ -122,6 +123,23 @@ predict_with_models <- function (models_list, test_data) {
 
 # Identify particles which require review 
 
+```{r select and rename helper}
+select_and_rename <- function(df, df_name){
+  #helper function (should not be called directly) to assist with creating wide data for multiple joins
+  #Inputs: df: dataframe to be renamed
+  #        df_name: string name of dataframe (i.e., model prefix)
+  #Outputs: selected and renamed dataframe with prediction colnames with desired prefix
+
+  res <- df %>%
+    select(id, img_id, starts_with('.pred')) %>%
+    rename_with(.fn = ~str_c(., '.',  df_name), .cols=starts_with('.pred'))
+  
+  return(res)
+}
+
+```
+
+
 ```{r identify mismatched particles}
 get_pred_correspondence <-function (preds_df_list) {
   #Builds a correspondence table by essentially joining all the predictions together.
@@ -130,9 +148,9 @@ get_pred_correspondence <-function (preds_df_list) {
   #Returns: wide dataframe of prediction dataframe with prediction probabilities for each model type and classes
   
   corr_table <- preds_df_list %>%
-    map(~select(., id, img_id, starts_with('.pred'))) %>%
-    purrr::reduce(full_join, suffix=str_c('.', names(preds_df_list)), by=c('id', 'img_id')) %>%
-    select(id, img_id, starts_with('.pred_class'), everything())
+    map2(names(preds_df_list), select_and_rename) %>%
+    purrr::reduce(full_join, by=c('id', 'img_id')) %>%
+    select(id, img_id, starts_with('.pred_class'), sort(colnames(.)))
   
   return(corr_table)
 }
@@ -169,7 +187,7 @@ review_particles <-function (corr_table) {
     filter(near(agreement_degree,1)) %>%
     distinct() %>%
     left_join(corr_table, by=c('id', 'img_id')) %>%
-    select(id, img_id, mdl_class_pred, agreement_degree, sort(colnames(.)), -value_counts) %>%
+    select(id, img_id, mdl_class_pred, agreement_degree, sort(colnames(.))) %>%
     dplyr::relocate(starts_with('.pred_class'), .after=last_col()) 
   
   #get table of disagreements
@@ -181,7 +199,7 @@ review_particles <-function (corr_table) {
     dplyr::slice(1) %>%
     ungroup() %>%
     left_join(corr_table, by=c('id', 'img_id')) %>%
-    select(id, img_id, mdl_class_pred, agreement_degree, sort(colnames(.)), -value_counts, ) %>%
+    select(id, img_id, mdl_class_pred, agreement_degree, sort(colnames(.)), -value_counts) %>%
     dplyr::relocate(starts_with('.pred_class'), .after=last_col()) %>%
     arrange(desc(agreement_degree))
   
