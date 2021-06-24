@@ -56,8 +56,8 @@ move_model_info <- function(model_prefix, move_type='save', file_post=NULL, box_
       box_dir = get('box_base', envir=.GlobalEnv)
       box_dir
     }, error = function(){
-      message("Didn't find box_base in the global environment...using ~/Box/DSI_AncientArtifacts/...")
-      path.expand('~/Box/DSI_AncientArtifacts/')
+      message("Didn't find box_base in the global environment...using ~/../Box/DSI_AncientArtifacts/...")
+      path.expand('~/../Box/DSI_AncientArtifacts/')
     })
   }
   
