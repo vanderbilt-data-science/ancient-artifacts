@@ -1,0 +1,94 @@
+---
+title: "61-inference"
+output: html_notebook
+---
+
+> A framework for predicting across multiple models
+
+# Overview and Usage
+
+This notebook provides inference for PartAn data, and uses your built models by the mechanisms documented in the 40 and 50 series notebooks.  This functionality uses your (potentially) unlabeled data to make predictions to classify your particles into your desired classes.  An example will be provided in the `62-inference-demo.Rmd` notebook provided.
+
+## Pre-requisites for out-of-the-box usage
+
+This code requires the following:
+* **Data location**:  PartAn data should be stored on Box, and accessible via Box Sync (Box mounted locally on your computer).  You can find more information about this here: https://support.box.com/hc/en-us/articles/360043697194-Installing-Box-Sync .  If you choose not to load the data in this manner, you can load the raw data in another notebook and make sure to assign it to the variable name `data_raw`.
+* **Model data**: This code assumes that you've stored your models in an `RData` subdirectory of your main directory on Box and in an `.RData` format.  It additionally assumes that you've saved final tidymodels workflow fits in a particular standard naming format.  If you haven't done this, you'll need to make changes to either your model names or create your own functions where the code fails due to the standardized naming conventions we've adopted.
+
+## Using this code
+In the options section below, you'll see provided some empty areas for where you'll add the filepath your data and models.  Make sure to fill these in along with any other options indicated.
+
+Then, Run All Chunks.  The results will be displayed inline.  After the results are produced, save this file, which will automatically be converted into an html document with the name `60-inference.nb.html`.
+
+# Options
+```{r set inference options}
+#box directory (e.g., 'Volcano_Project' or 'DSI_AncientArtifacts', etc.)
+box_directory <- 'DSI_AncientArtifacts'
+#box_directory <- NULL
+
+#data filepath (relative to box directory above, e.g. 'Archaeological Data/data.csv' or 'Archaeological Data/subdirectory/arch_data.csv', etc)
+data_filepath <- NULL
+
+#provide a list of the prefixes for your final model fits, e.g., 'glmnet', 'nb', etc.  This must be a list, even if it is one single model.
+model_prefix_list <- list('glmnet', 'nb', 'rf', 'xgb')
+#model_prefix_list = []
+
+target_class <- 'exp'
+#reference_class <- NULL
+```
+
+# Load and validate data 
+```{r load and validate data}
+project_files <- set_inference_filepaths(box_directory, data_filepath)
+
+# load and fix partAn file to dataframe
+test_data <- load_data(project_files['data_path'])
+
+# validate data
+validate_data(test_data)
+```
+
+# Load models
+```{r load models}
+#using box path, load listed models
+map(~load_model(., models_dir =project_files['models_dir']))
+```
+
+
+# Get predictions using all loaded models
+
+```{r predict on the data using the provided models}
+preds_list <- predict_with_models(model_prefix_list, test_data)
+preds_list
+```
+
+# Predict classes by model voting 
+
+```{r identify questionable particles}
+preds_corr <- get_pred_correspondence(preds_list)
+preds_corr
+```
+
+```{r identify matched and mismatched particles across models}
+
+particle_matches <- review_particles(preds_corr)
+particle_matches[['agreements']]
+particle_matches[['disagreements']]
+
+```
+
+#Output the percentage of microdebitage estimated in the sample
+
+```{r extracting target particles function}
+target_particles <- extract_targets(particle_matches, 'target_class', agree_thresh = 0.75)
+target_particles
+```
+
+```{r printing amount of target particles}
+#get target fraction
+fraction_target <- nrow(target_particles)/nrow(test_data) 
+
+#print fraction
+print(str_c('Target class ', target_class, ' is predicted to compose: ', round(fraction_target, 5)*100, '% of your sample.'))
+print(str_c('This corresponds to ', nrow(target_particles), ' out of ', nrow(test_data), ' particles.' ))
+```
