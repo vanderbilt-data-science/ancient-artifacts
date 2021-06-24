@@ -1,0 +1,149 @@
+---
+title: "61-inference"
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: true
+---
+
+> A framework for predicting across multiple models
+
+# Overview and Usage
+
+This notebook provides inference for PartAn data, and uses your built models by the mechanisms documented in the 40 and 50 series notebooks.  This functionality uses your (potentially) unlabeled data to make predictions to classify your particles into your desired classes.  An example will be provided in the `61-inference-demo.html` document provided.
+
+## Pre-requisites for out-of-the-box usage
+
+This code requires the following:
+
+* **Data location**:  PartAn data should be stored on Box, and accessible via Box Sync (Box mounted locally on your computer).  You can find more information about this here: https://support.box.com/hc/en-us/articles/360043697194-Installing-Box-Sync .  The expected file format is a csv.  If your data is not stored in this location, you can overwrite the name of the calculated filename in the code below.
+* **Model data**: This code assumes:
+  * You've stored your models in an `RData` subdirectory of your main directory on Box and in an `.RData` format, with name _modelprefix_\_modeling_info.RData.  Your _modelprefix_ will be used heavily here, so pick something descriptive.  Good examples discern the models (e.g., `glmnet`, `nb`).  See below for details.
+  * Your saved final tidymodels workflow is named _modelprefix_\_final_fit within your .RData file.
+
+The location of the data is relatively flexible, but currently, the model storage format on Box and naming conventions are inflexible.  It is recommended to adhere to these suggestions unless you're skilled with R and can identify what you need to change within the code.
+  
+
+## Using this code
+In the options section below, you'll see provided some variables which are all currently set to NULL or the equivalent.  Fill in the correct values for your application.  Note that the code will function with `NULL` being left for `data_filepath` if you want to set it explicitly in the load data chunk, and you can leave `target_colname` `NULL` as well if your data isn't labeled.
+
+Then, Run All Chunks.  The results will be displayed inline.  After the results are produced, save this file, which will automatically be converted into an html document with the name `61-inference.nb.html`.
+
+## Import relevant source code and packages
+You shouldn't need to make any changes here.
+```{r load packages and source, results='hide'}
+source(knitr::purl("60-inference-helpers.Rmd"))
+fs::file_delete("60-inference-helpers.R")
+```
+
+
+# Options
+Set your filepath and class prediction settings here.  Some examples are provided.
+```{r set inference options}
+#box directory (e.g., 'Volcano_Project' or 'DSI_AncientArtifacts', etc.)
+#box_directory <- 'DSI_AncientArtifacts'
+box_directory <- NULL
+
+#data filepath (relative to box directory above, e.g. 'Archaeological Data/data.csv' or 'Archaeological Data/subdirectory/arch_data.csv', etc)
+#direct changes to data filepath can be see in the data loading section below
+data_filepath <- NULL
+
+#provide a list of the prefixes for your final model fits, e.g., 'glmnet', 'nb', etc.  This must be a list, even if it is one single model.
+#model_prefix_list <- list('glmnet', 'rf', 'xgb')
+model_prefix_list <- list()
+
+#provide the string or value which corresponds to your target variable (e.g. microdebitage is 'exp')
+#target_class <- 'exp'
+target_class <- NULL
+
+#provide the target column name if your data is labeled, otherwise, leave as null
+#target_colname <- 'particle_class'
+target_colname <- NULL
+
+```
+
+# Load and validate data 
+In this section, the filepaths are calculated and the data is loaded.  If you need to change filepaths here, you can do this by manually setting the `project_files` variable named list values (`base_dir`, `data_path`, and `models_dir`).
+
+```{r load and validate data csvs}
+project_files <- set_inference_filepaths(box_directory, data_filepath)
+
+# here's an example of how you can pass in specific filenames
+# project_files['data_path'] <- 'LithicExperimentalData.csv'
+
+# load and fix partAn file to dataframe
+test_data <- load_data(project_files[['data_path']])
+
+#here's an example of how you can directly write test data
+#test_data <- artifact_data
+
+# validate data
+validate_data(test_data)
+```
+
+# Load models
+In this step, we load all of the models from the model directory.  If you need to set a different model directory, you can also do this here.  However, you will want to make sure that your RData files within have the correct format (_modelprefix_\_modeling_info.Rdata).
+```{r load models}
+#using box path, load listed models
+model_prefix_list %>%
+  map(~load_model(., models_dir = project_files[['models_dir']]))
+```
+
+
+# Get predictions using all loaded models
+Here, we get the predictions from all of the models on the test data.  You can peruse the results in the table below.
+```{r predict on the data using the provided models}
+preds_list <- predict_with_models(model_prefix_list, test_data)
+preds_list
+```
+
+# Predict classes by model voting 
+In this section, we build the dataframe which will allow models to "cast votes" about the predicted class.  
+```{r identify questionable particles}
+#build dataframe of joined predictions per sample (wide format for simple perusing)
+preds_corr <- get_pred_correspondence(preds_list)
+preds_corr
+```
+The following section explicitly produces the voting effect.  The `particle_matches` list has 3 dataframes.  The `agreements` dataframe lists all particles where all models completely agreed on the class.  The `disagreements` dataframe shows where there was disagreements between models.  For both of these dataframes, `agreement_degree` shows the extent to which models agreed (e.g. 0.5 for 2 models means that the models completely disagreed; 0.66 for 3 models means that 2 models agreed).  `mdl_class_pred` shows the majority predicted class (given that an unequal number of models is present), or arbitrarily chooses a class if the votes are equally split. 
+
+```{r identify matched and mismatched particles across models}
+particle_matches <- review_particles(preds_corr)
+particle_matches[['agreements']]
+particle_matches[['disagreements']]
+
+```
+
+# Identify target class particles and estimate sample composition
+In this section, the particles which were classified as the target are extracted into their own dataframe.  The percentage sample composition of these target particles is also reported.
+
+```{r extracting target particles function}
+target_particles <- extract_targets(particle_matches, target_class, agree_thresh = 0.6)
+target_particles
+```
+
+```{r printing amount of target particles}
+#get target fraction
+fraction_target <- nrow(target_particles)/nrow(test_data) 
+
+#print fraction
+print(str_c('Target class ', target_class, ' is predicted to compose: ', round(fraction_target, 5)*100, '% of your sample.'))
+print(str_c('This corresponds to ', nrow(target_particles), ' out of ', nrow(test_data), ' particles.' ))
+```
+# Identify misclassified particles
+
+If you have labeled data where the particle type is known, use the following code to explore the misclassified particles.  The `full_misclass` dataframe contains all of the misclassified particles, and the `agree_misclass` and `disagree_misclass` dataframes separate the full dataframe into where the models agreed vs. where they disagreed.  The particles are organized by increasing probability of the target data for the first model type listed.
+```{r get misclassified particles}
+misclassified_samples <- NULL
+
+if(!is.null(target_colname)){
+  misclassified_samples <- get_misclassified(particle_matches, test_data, target_colname, target_class)
+}
+
+misclassified_samples[['full_misclass']]
+misclassified_samples[['agree_misclass']]
+misclassified_samples[['disagree_misclass']]
+
+```
+
