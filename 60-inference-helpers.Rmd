@@ -1,6 +1,6 @@
 ---
-title: "60-inference"
-output: html_notebook
+title: "60-inference-helpers"
+output: html_document
 ---
 
 # Helper functions for performing inference
@@ -23,6 +23,11 @@ pacman::p_load(tidyverse, janitor, assertr, forcats, purrr)
 
 ```{r inference setup options}
 set_inference_filepaths <- function(project_dir, data_path) {
+  #simple helper for setting filepaths
+  #Inputs: project_dir: string of name of project directory in Box (no leading slash)
+  #        data_path: string of path to data and filename from the project_dir (no leading slash)
+  #Returns: named list of base_dir (base Box directory), data_path (full path of data file), and models_dir (full path to model directory)
+  
   base_dir <- path.expand(str_c('~/../Box/', project_dir))
   data_path <- str_c(base_dir, data_path, sep='/')
   models_dir <- str_c(base_dir, 'RData', sep='/')
@@ -35,6 +40,9 @@ set_inference_filepaths <- function(project_dir, data_path) {
 
 ```{r load and fix data}
 load_data <- function(data_path) {
+  #loads the data from the provided filepath
+  #Inputs: data_path: path to csv file
+  #Returns: dataframe with clean names and correct data types
   
   #read raw data and fix subheader row
   df_data <- read_csv(data_path) %>%
@@ -50,60 +58,8 @@ load_data <- function(data_path) {
 ```
 
 
-
 # Validate prediction 
-```{r validate prediction dataframe }
-
-validate_data <- function(pred_data) {
-  
-  # Angularity: 0 (perfect circle)-180 (many sharp edges)
-assert(pred_data, within_bounds(0,180), angularity, 
-       description = "Values must be within 0-180 range.")
-
-# Circularity: 0-1 (perfect circle)
-assert(pred_data, within_bounds(0,1), circularity,
-       description = "Values must be within 0-1 range.")
-
-# Solidity: 0-1 (very smooth surface)
-assert(pred_data, within_bounds(0,1), solidity,
-       description = "Values must be within 0-1 range.")
-
-# Transparency: 0 (least transparent)-1 (most transparent)
-assert(pred_data, within_bounds(0,1), transparency,
-       description = "Values must be within 0-1 range.")
-
-# T/W Ratio: 0-1 (represents a sphere)
-assert(pred_data, within_bounds(0,1), t_w_ratio,
-       description = "Values must be within 0-1 range.")
-
-# Sphericity: 0-1 (perfect circle)
-assert(pred_data, within_bounds(0,1), sphericity,
-       description = "Values must be within 0-1 range.")
-
-# Concavity: 0-1 (rough, spikey surface)
-assert(pred_data, within_bounds(0,1), concavity,
-       description = "Values must be within 0-1 range.")
-
-# Convexity: 0-1 (smooth)
-assert(pred_data, within_bounds(0,1), convexity,
-       description = "Values must be within 0-1 range.")
-
-#L/W Aspect Ratio: 1 (sphere)-infinity
-assert(pred_data, within_bounds(1,Inf), l_w_ratio,
-       description = "Values must be within 1-infinity range.")
-
-# W/T Ratio: 1 (sphere)-infinity
-assert(pred_data, within_bounds(1,Inf), w_t_ratio,
-       description = "Values must be within 1-infinity range.")
-
-# Verify that f_width always is between 0.125-6 range
-assert(pred_data, within_bounds(0,Inf), f_width,
-       description = "Values must be within 0.125-6 range." )
-
-
-}
-
-```
+At bottom due to function length
 
 # Model loading
 This is a function for model loading
@@ -123,10 +79,14 @@ load_model <- function(model_prefix, models_dir) {
 }
 ```
 
-# Predict using all loading models
+# Predict using all loaded models
 
 ```{r predict using fit on selected data}
-predict_both <- function(final_fit, pred_data) {
+predict_probs <- function(final_fit, pred_data) {
+  #Helper function (shouldn't be called directly) to predict probabilties from models
+  #Inputs: final_fit: workflow fit from tidymodels
+  #        pred_data: dataframe upon which predictions will be done.  Can include target column, but wil not be used.
+  #Outputs: dataframe with prediction probabilies for classes and the classes based on the default threshold of 0.5
   
   #get prediction class and probabilities
   class_pred_df <- pred_data %>%
@@ -140,11 +100,16 @@ predict_both <- function(final_fit, pred_data) {
 ```{r predict on the data using the provided models}
 
 predict_with_models <- function (models_list, test_data) {
+  #Predicts using all the models in the provided model list.  Assumes all models are in the
+  #global environment with format [model_prefix]_final_fit, (e.g., glmnet_final_fit)
+  #Inputs: models_list: list of model prefixes for tidymodels workflow model (e.g., nb, xgb)
+  #        test_data: dataframe to be predicted on
+  #Returns: a named list of prediction dataframes, named by the models_list input
   
 
   #create the training prediction data frames and mutate a column with their names
   model_preds_list <- models_list %>%
-    map(~predict_both(get(str_c(., '_final_fit'), envir=.GlobalEnv), test_data)) %>%
+    map(~predict_probs(get(str_c(., '_final_fit'), envir=.GlobalEnv), test_data)) %>%
     map2(models_list, function(df, mdl_name){mutate(df, model_name=mdl_name)})
   
   names(model_preds_list) <- models_list
@@ -159,6 +124,10 @@ predict_with_models <- function (models_list, test_data) {
 
 ```{r identify mismatched particles}
 get_pred_correspondence <-function (preds_df_list) {
+  #Builds a correspondence table by essentially joining all the predictions together.
+  #Provided in long format so that this can be easily perused by readers/users
+  #Inputs: preds_df_list (named list of prediction dataframes (e.g., from predict_with_models function))
+  #Returns: wide dataframe of prediction dataframe with prediction probabilities for each model type and classes
   
   corr_table <- preds_df_list %>%
     map(~select(., id, img_id, starts_with('.pred'))) %>%
@@ -173,6 +142,11 @@ get_pred_correspondence <-function (preds_df_list) {
 
 ```{r identify particles of concern}
 review_particles <-function (corr_table) {
+  #Generates review dataframes based on model voting to establish predicted class
+  #Inputs: corr_table: a wide dataframe from prediction (e.g., from get_pred_corresondence)
+  #Outputs: named list of dataframes: agreements: where all of the models totally agree
+  #                                   disagreements: where the models disagree
+  #                                   full_table: long table of all votes and tallys by the model.  Note that the ids here will not be unique.
   
   #convert to long format
   agreement_table_full <- corr_table %>%
@@ -219,18 +193,81 @@ review_particles <-function (corr_table) {
 
 ```
 
-
 # Output the percentage of microdebitage estimated in the sample
 
 ```{r percentage microdebitage function}
 
 extract_targets <- function(agree_df, ref_cls, agree_thresh=0.99) {
+  #extract the target class (e.g., microdebitage) from the voted-upon dataset
+  #agree_df: named list of dataframes with agreements and disagreements (e.g., from review_particles)
+  #ref_cls: the target class to be identified (e.g., microdebitage)
+  #agree_thresh: if models have disagreements, all values >= this value will be considered to be the target if the target was predicted
+  #             (i.e. majority-like voting)
+  #Returns: dataframe of all particles identified to be the target class
   
   targets_df <- agree_df[['agreements']] %>%
     bind_rows(agree_df[['disagreements']]) %>%
     filter(agreement_degree >= agree_thresh & mdl_class_pred==ref_cls)
   
   return(targets_df)
+}
+
+```
+
+## Validation function
+From above, to assist with making assertions on the behavior of PartAn data
+
+```{r validate prediction dataframe }
+
+validate_data <- function(pred_data) {
+  #performs validation upon the input data
+  #Inputs: pred_data: partAn data to be analyzed
+  #Outputs: failed assertions, if any
+  
+  # Angularity: 0 (perfect circle)-180 (many sharp edges)
+assert(pred_data, within_bounds(0,180), angularity, 
+       description = "Values must be within 0-180 range.")
+
+# Circularity: 0-1 (perfect circle)
+assert(pred_data, within_bounds(0,1), circularity,
+       description = "Values must be within 0-1 range.")
+
+# Solidity: 0-1 (very smooth surface)
+assert(pred_data, within_bounds(0,1), solidity,
+       description = "Values must be within 0-1 range.")
+
+# Transparency: 0 (least transparent)-1 (most transparent)
+assert(pred_data, within_bounds(0,1), transparency,
+       description = "Values must be within 0-1 range.")
+
+# T/W Ratio: 0-1 (represents a sphere)
+assert(pred_data, within_bounds(0,1), t_w_ratio,
+       description = "Values must be within 0-1 range.")
+
+# Sphericity: 0-1 (perfect circle)
+assert(pred_data, within_bounds(0,1), sphericity,
+       description = "Values must be within 0-1 range.")
+
+# Concavity: 0-1 (rough, spikey surface)
+assert(pred_data, within_bounds(0,1), concavity,
+       description = "Values must be within 0-1 range.")
+
+# Convexity: 0-1 (smooth)
+assert(pred_data, within_bounds(0,1), convexity,
+       description = "Values must be within 0-1 range.")
+
+#L/W Aspect Ratio: 1 (sphere)-infinity
+assert(pred_data, within_bounds(1,Inf), l_w_ratio,
+       description = "Values must be within 1-infinity range.")
+
+# W/T Ratio: 1 (sphere)-infinity
+assert(pred_data, within_bounds(1,Inf), w_t_ratio,
+       description = "Values must be within 1-infinity range.")
+
+# Verify that f_width always is between 0.125-6 range
+assert(pred_data, within_bounds(0,Inf), f_width,
+       description = "Values must be within 0.125-6 range." )
+
 }
 
 ```
