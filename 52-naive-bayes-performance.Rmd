@@ -25,27 +25,18 @@ pacman::p_load(vip)
 
 # Load Saved Data
 ```{r load saved nb}
-#move_model_info('nb', 'load')
+move_model_info('nb', 'load')
 ```
 
 # Selected Model Performance Evaluation
 ## Cross validation metrics from best model
 Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
 ```{r best model cross validation}
-#get best glmnet metrics
+#get best nb metrics
 best_nb_fold_metrics <- calculate_best_performance_metrics(nb_fold_metrics, best_nb_params)
-
 best_nb_fold_metrics %>%
-    mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
-    ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
-    geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
-    geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
-    facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
-    labs(title='Distribution of cross validation metrics for best hyperparameter set',
-         subtitle='By metric',
-         x='metric',
-         y='metric estimate') +
-    theme(legend.position = "none")
+  group_by(.metric) %>% 
+  summarize(overall_perf = mean(.estimate))
 
 ```
 We see very high values for accuracy, npv, and spec, all of which point to this model being one of the "outliers" we discussed earlier. 
@@ -65,52 +56,23 @@ Here we see there were roughly 7,500 particles that we truly site particles that
 ## Variable imporance
 What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
 
-```{r naive bayes variable importance, fig.height=6}
-nb_vip <- nb_final_fit %>%
-  pull_workflow_fit()
-  
-nb_vip <- caret::filterVarImp( x= nb_vip$fit$data$x , y = nb_vip$fit$data$y) 
-nb_vip <- as.data.frame(nb_vip)
-
-nb_vip <- rownames_to_column(nb_vip)
-names(nb_vip)[1] <- "var"
-
-nb_vip <- nb_vip %>% 
-  mutate(var = fct_reorder(var, exp))
-
-ggplot(nb_vip, aes(x=var, y=exp)) +
-  geom_col() +
-  coord_flip() +
-    labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Smoothness:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable')
-  
-#+#nb_vip %>%
-#  ggplot(aes(x=exp, y=site, fill=association))+
-#  geom_col() 
-#  coord_flip() +
-#  labs(title='Scaled coefficient magnitudes of glmnet',
-#       subtitle=str_c('Penalty:', format(pull_workflow_fit(nb_final_fit)$spec$args$smoothness[[2]],
-#                                         digits=5, nsmall=2, scientific=TRUE),
-#                      'Mixture:', format(pull_workflow_fit(nb_final_fit)$spec$args$Laplace[[2]],
-#                                         digits=5, nsmall=3),
-#                      sep=' '),
-#       y='scaled absolute importance',
-#       x='variable')
+```{r nb variable importance, fig.height=6}
+nb_vip <- plot_variable_importance(nb_final_fit, assessment_data=train_data, mdl_name = 'nb', positive_class='exp')
 ```
 Here we can clearly see a common thread through many of the models. The Naive bayes model also weighted transparency incredibly high followed by the typical compactness, roundness, and l_t_ratio which were also common candidates for high importance variables. 
+
+## ROC curves
+```{r}
+plot_performance_curves(nb_training_preds)
+```
+These curves demonstrate sub-optimal performance, particularly in comparison with the performance of other models.  This will likely not be the best model to use for prediction.
 
 ##Calibration curve
 ```{r visualize the model calibration}
 #get prediction class and probabilities
 plot_calibration_curve(nb_training_preds)
 ```
-
+The calibration curve is abysmal, and thus we can conclude that the scores generated from the model in no way reflect true probabilities.  If this model is desired to be used (probably not in the context of the other models), and the scores are desired to be used as probabilities, extra calibration must be done on this model to adjust the scores appropriately.
 
 ##Threshold for particles
 ```{r visualize classification for particles and their threshold}
@@ -118,11 +80,13 @@ plot_calibration_curve(nb_training_preds)
 plot_prediction_probabilities(nb_training_preds)
 ```
 
-
+```{r}
+plot_label_by_score(nb_training_preds)
+```
+This model does not appear to have a very strong threshold, particularly at the default threshold of 0.5.  This is relatively reflected in the ROC curve, where better performance is achieved in a very specific corner of the ROC curve.  This model, if used, would additionally require a specifically identified threshold, as 0.5 does not appear here to show a strong delineation threshold.  The threshold actually appears to be closer to around 0.8.  This conclusion is also substantiated by the calibration curve, which suggests that the model likes to predict higher scores - or if considered probabilities - than they actually should be.
 
 # Save markdown file
-Lastly, we'll just make sure to save this markdown file into the repo so that it may be easily accessed and viewed by everyone.  To successfully use this, **_make sure you have saved your notebook and the .nb.html has been regenerated!!_**
 ```{r save markdown}
-fs::file_copy('52-naive-bayes-performance.nb.html', './html_results/52-naive-bayes-performance.nb.html', overwrite=TRUE)
+#fs::file_copy('52-naive-bayes-performance.nb.html', './html_results/52-naive-bayes-performance.nb.html', overwrite=TRUE)
 ```
 

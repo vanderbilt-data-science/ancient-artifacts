@@ -21,7 +21,7 @@ pacman::p_load(janitor, assertr, tidyverse, forcats, fs)
 # Global saving settings
 Reading data from Box assumes that everyone has Box Desktop (i.e., Box Sync, Box Drive) installed in the default file location (~/Box).  The following code sets that directory for loading and saving shared models.
 ```{r box save directory}
-box_base = path.expand("~/Box/DSI_AncientArtifacts/")
+box_base <- path.expand("~/../Box/DSI_AncientArtifacts/")
 ```
 
 # Reading in files
