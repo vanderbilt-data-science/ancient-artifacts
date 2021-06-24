@@ -33,7 +33,7 @@ Then, Run All Chunks.  The results will be displayed inline.  After the results 
 
 ## Import relevant source code and packages
 You shouldn't need to make any changes here.
-```{r load packages and source}
+```{r load packages and source, results='hide'}
 source(knitr::purl("60-inference-helpers.Rmd"))
 fs::file_delete("60-inference-helpers.R")
 ```
@@ -53,19 +53,30 @@ data_filepath <- NULL
 model_prefix_list <- list('glmnet', 'rf', 'xgb')
 #model_prefix_list = []
 
+#provide the string or value which corresponds to your target variable (e.g. microdebitage is 'exp')
 target_class <- 'exp'
-#reference_class <- NULL
+#target_class <- NULL
+
+#provide the target column name if your data is labeled
+target_colname <- 'particle_class'
+#target_colname <- NULL
 
 ```
 
 # Load and validate data 
 In this section, the filepaths are calculated and the data is loaded.  If you need to change filepaths here, you can do this by manually setting the `project_files` variable named list values (`base_dir`, `data_path`, and `models_dir`).
-```{r load and validate data}
+
+```{r load and validate data csvs}
 project_files <- set_inference_filepaths(box_directory, data_filepath)
-project_files['data_path'] <- 'LithicExperimentalData.csv'
+
+# here's an example of how you can pass in specific filenames
+# project_files['data_path'] <- 'LithicExperimentalData.csv'
 
 # load and fix partAn file to dataframe
 test_data <- load_data(project_files[['data_path']])
+
+#here's an example of how you can directly write test data
+test_data <- artifact_data
 
 # validate data
 validate_data(test_data)
@@ -94,7 +105,7 @@ In this section, we build the dataframe which will allow models to "cast votes" 
 preds_corr <- get_pred_correspondence(preds_list)
 preds_corr
 ```
-This section explicitly produces the voting effect.  The `particle_matches` list has 3 dataframes.  The `agreements` dataframe lists all particles where all models completely agreed on the class.  The `disagreements` dataframe shows where there was disagreements between models.  For both of these dataframes, `agreement_degree` shows the extent to which models agreed (e.g. 0.5 for 2 models means that the models completely disagreed; 0.66 for 3 models means that 2 models agreed).  `mdl_class_pred` shows the majority predicted class (given that an unequal number of models is present), or arbitrarily chooses a class if the votes are equally split. 
+The following section explicitly produces the voting effect.  The `particle_matches` list has 3 dataframes.  The `agreements` dataframe lists all particles where all models completely agreed on the class.  The `disagreements` dataframe shows where there was disagreements between models.  For both of these dataframes, `agreement_degree` shows the extent to which models agreed (e.g. 0.5 for 2 models means that the models completely disagreed; 0.66 for 3 models means that 2 models agreed).  `mdl_class_pred` shows the majority predicted class (given that an unequal number of models is present), or arbitrarily chooses a class if the votes are equally split. 
 
 ```{r identify matched and mismatched particles across models}
 particle_matches <- review_particles(preds_corr)
@@ -119,3 +130,19 @@ fraction_target <- nrow(target_particles)/nrow(test_data)
 print(str_c('Target class ', target_class, ' is predicted to compose: ', round(fraction_target, 5)*100, '% of your sample.'))
 print(str_c('This corresponds to ', nrow(target_particles), ' out of ', nrow(test_data), ' particles.' ))
 ```
+# Identify misclassified particles
+
+If you have labeled data where the particle type is known, use the following code to explore the misclassified particles.  The `full_misclass` dataframe contains all of the misclassified particles, and the `agree_misclass` and `disagree_misclass` dataframes separate the full dataframe into where the models agreed vs. where they disagreed.  The particles are organized by increasing probability of the target data for the first model type listed.
+```{r get misclassified particles}
+misclassified_samples <- NULL
+
+if(!is.null(target_colname)){
+  misclassified_samples <- get_misclassified(particle_matches, test_data, target_colname, target_class)
+}
+
+misclassified_samples[['full_misclass']]
+misclassified_samples[['agree_misclass']]
+misclassified_samples[['disagree_misclass']]
+
+```
+

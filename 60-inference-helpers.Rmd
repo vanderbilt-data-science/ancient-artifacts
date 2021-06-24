@@ -218,9 +218,9 @@ review_particles <-function (corr_table) {
 extract_targets <- function(agree_df, ref_cls, agree_thresh=0.99) {
   #extract the target class (e.g., microdebitage) from the voted-upon dataset
   #agree_df: named list of dataframes with agreements and disagreements (e.g., from review_particles)
-  #ref_cls: the target class to be identified (e.g., microdebitage)
-  #agree_thresh: if models have disagreements, all values >= this value will be considered to be the target if the target was predicted
-  #             (i.e. majority-like voting)
+  #ref_cls: string of the target class to be identified (e.g., 'exp' for microdebitage)
+  #agree_thresh: float value for if models have disagreements, all values >= this value will be considered to be the target 
+  #              if the target was predicted (i.e. majority-like voting)
   #Returns: dataframe of all particles identified to be the target class
   
   targets_df <- agree_df[['agreements']] %>%
@@ -230,6 +230,41 @@ extract_targets <- function(agree_df, ref_cls, agree_thresh=0.99) {
   return(targets_df)
 }
 
+```
+
+# Assess misclassification
+```{r identify misclassified}
+get_misclassified <- function(agree_df, pred_data, target_col, ref_cls) {
+  #returns the misclassified particles ordered by increasing probability
+  #Inputs: agree_df: named list of dataframes with agreements and disagreements (e.g., from review_particles)
+  #        pred_data: dataframe for prediction
+  #        target_col: name of the target column
+  #        ref_cls: name of the class of interest (e.g., 'exp' for microdebitage)
+  #Returns: named list of dataframes: full_misclass - all of the misclassified data
+  #                                   agree_misclass - subset of full_misclass for the agreed upon class prediction
+  #                                   disagree_misclass - subset of full_misclass where the models did not agree
+  
+  ag_df <- agree_df[['agreements']] %>%
+    mutate(vote_type = 'agree')
+  disag_df <- agree_df[['disagreements']] %>%
+    mutate(vote_type = 'disagree')
+  
+  arb_sort_col <- str_extract(colnames(ag_df), str_c('.pred_', ref_cls, '.*'))
+  arb_sort_col <- arb_sort_col[!is.na(arb_sort_col)]
+  arb_sort_col <- arb_sort_col[[1]]
+  
+  misclas_df <- ag_df %>%
+    bind_rows(disag_df) %>%
+    inner_join(select(pred_data, id, img_id, all_of(target_col)), by=c('id', 'img_id')) %>%
+    filter(mdl_class_pred!= get(target_col)) %>%
+    mutate(misclass_type = ifelse(get(target_col)==ref_cls, 'fn', 'fp')) %>%
+    select(id, img_id, mdl_class_pred, all_of(target_col), misclass_type, everything()) %>%
+    arrange(get(arb_sort_col))
+  
+  return(list(full_misclass = misclas_df,
+              agree_misclass = filter(misclas_df, vote_type=='agree'),
+              disagree_misclass = filter(misclas_df, vote_type=='disagree')))
+}
 ```
 
 ## Validation function
