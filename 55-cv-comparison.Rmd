@@ -17,13 +17,12 @@ source(knitr::purl("40-modeling.Rmd"))
 source(knitr::purl("50-reporting.Rmd"))
 fs::file_delete("40-modeling.R")
 fs::file_delete("50-reporting.R")
-
 ```
 
-# Load data (if desired)
+### Load data (if desired)
 ```{r load all models}
 mdl_list <- list('glmnet', 'nb', 'rf', 'xgb')
-map(mdl_list, ~move_model_info(., 'load', box_dir = path.expand('~/../Box/DSI_AncientArtifacts/')))
+map(mdl_list, ~move_model_info(., 'load'))
 ```
 
 # Cross-validation metrics
@@ -51,25 +50,30 @@ best_fold_metrics %>%
   geom_boxplot(outlier.colour = 'red', na.rm=TRUE) +
   facet_wrap(facet='.metric', scales='free', nrow=2) + 
   labs(title='Comparison of performance of CV metrics between 4 model types',
-       subtitle='By fold and metric',
+       subtitle='By model type and metric',
        x='metric',
        y='metric distribution') +
   scale_x_discrete(labels=NULL)
 
 ```
-
+In terms of cross-validation metrics, we can see that the logistic regression and the tree-based models are perform similarly and have relatively tightly distributed values.  This means that any of these single models tends to have the same performance on slightly different datasets.  On the other hand, naive bayes does tend to have relatively strong spread in the performance metrics, meaning that the model itself has substantial variance based on the data that it is given.  This suggests that naive bayes may not be the best model for this data.
 
 ```{r performance summaries, message=FALSE}
 best_fold_metrics %>%
   group_by(modeltype, .metric) %>%
   summarise(mean_value = mean(.estimate, na.rm = TRUE)) %>%
-  ggplot(mapping = aes(x=.metric, y=mean_value, fill = modeltype))+
-    geom_col(position = "dodge")
+  ggplot(mapping = aes(x=.metric, y=mean_value, fill = modeltype)) +
+    geom_col(position = "dodge") + 
+    labs(title='Comparison of performance of CV metrics between 4 model types',
+       subtitle='By model type and metric',
+       x='metric',
+       y='mean value across folds')
   
 ```
+Here, we can see the same plot as before, but as a comparison between the average values of these metrics over the cross-validation folds.  We again see the challenges faced by naive bayes whereas the other models perform relatively similarly.
 
 # Training data
-## Compare training metrics
+## Basic performance overview
 ```{r compare training metrics}
 #get list of prediction dataframes
 model_preds_dfs <- mdl_list %>%
@@ -91,12 +95,14 @@ train_metrics %>%
   labs(x='metric', y='metric value', title='Comparison of model metrics', subtitle='Train set', fill='Model Type') +
   theme(axis.text.x = element_text(angle = 45, hjust=1))
 ```
+Re-predicting on the entire training set, we see again that naive bayes has challenges in contrast to the other models.  We also see that here, the random forest dominates.  In terms of the default threshold of 0.5, sensitivity is best by far with the random forest.
 
 ## Compare ROCs
 ```{r compare training rocs}
 #plot performance
 plot_performance_curves(model_preds_dfs, unlist(mdl_list))
 ```
+The ROC curves and AUC again suggest great performance for everything other than Naive Bayes, although the random forest again dominates.  The performance of the random forest is so good that it is suspicious, and could suggest overtraining (poor generalization).  This will be explored in the next section which evaluates the models on the holdout set.
 
 ## Calibration Plots
 ```{r compare training calibrations}
@@ -107,9 +113,10 @@ cal_df <- model_preds_dfs %>%
 #plot calibration curves
 plot_calibration_curve(cal_df)
 ```
+The calibration plots here show that the model is relatively well calibrated for all of the expected models (not Naive Bayes).  Glmnet has the best calibration (closest to the diagonal line), and the tree based-models exhibit the standard s-shaped curve which is most pronounced in the random forest.  The random forest may need a bit of additional calibration to accurately reflect probabilities rather than general scores.
 
 # Test data
-Since the current approach is to use all of the models (except NaiveBayes) to get a joint consensus on the anticipated class label of the particle, we'll look at the test metrics on all of the models.
+## Basic performance overview
 
 ```{r compare test performance}
 #get list of prediction dataframes
@@ -133,12 +140,13 @@ test_metrics %>%
   theme(axis.text.x = element_text(angle = 45, hjust=1))
 
 ```
-
+As expected, the models perform a bit worse on the test data; however, we see that the random forest's performance has not diminished substantially.  We can conclude that this model is probably not overtrained, and that it is just an extremely good model.  The two tree-based models seem to perform the best, although glmnet is not far behind.  The sensitivity leaves some to be desired, although we've seen with the random forest that the threshold may be tuned in order to provide better estimations of the positive class.
 
 ```{r compare rocs}
 #plot performance
 plot_performance_curves(model_test_preds_dfs, unlist(mdl_list))
 ```
+The ROC/PRC and ROC-AUC and PR-AUC both exhibit good performance for the expected models.  They're of course a bit lower than the training set, but the performance is still very good.  
 
 ```{r compare calibrations}
 #add model name
@@ -149,6 +157,7 @@ cal_test_df <- model_test_preds_dfs %>%
 plot_calibration_curve(cal_test_df)
 
 ```
+This is an extremely interesting plot that suggests that perhaps, we may be able to accept the outputs of almost all of the models (except Naive Bayes) to be probabilities rather than simply scores.
 
 # Save markdown file
 ```{r save markdown}
