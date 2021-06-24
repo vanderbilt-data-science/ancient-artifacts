@@ -1,0 +1,237 @@
+---
+title: "60-inference"
+output: html_notebook
+---
+
+# Helper functions for performing inference
+
+# Usage
+Trying to perform inference on your dataset?  This can be done using the 61-inference notebook!  For an example of usage, see the 62-inference-demo notebook.
+
+# Setup project
+
+```{r import packages, results='hide'}
+if (!require("pacman"))
+   install.packages("pacman")
+
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("50-reporting.R")
+
+pacman::p_load(tidyverse, janitor, assertr, forcats, purrr)
+```
+
+
+```{r inference setup options}
+set_inference_filepaths <- function(project_dir, data_path) {
+  base_dir <- path.expand(str_c('~/../Box/', project_dir))
+  data_path <- str_c(base_dir, data_path, sep='/')
+  models_dir <- str_c(base_dir, 'RData', sep='/')
+  
+  return(list(base_dir = base_dir,
+              data_path = data_path,
+              models_dir = models_dir))
+}
+```
+
+```{r load and fix data}
+load_data <- function(data_path) {
+  
+  #read raw data and fix subheader row
+  df_data <- read_csv(data_path) %>%
+    clean_names() %>%
+    dplyr::slice(-1L) %>%
+    mutate(across(c(-starts_with('Filter'), -id, -img_id), as.double)) %>%
+    mutate(id = as.character(id), img_id = as.character(img_id))
+  
+  #return df data
+  return(df_data)
+}
+
+```
+
+
+
+# Validate prediction 
+```{r validate prediction dataframe }
+
+validate_data <- function(pred_data) {
+  
+  # Angularity: 0 (perfect circle)-180 (many sharp edges)
+assert(pred_data, within_bounds(0,180), angularity, 
+       description = "Values must be within 0-180 range.")
+
+# Circularity: 0-1 (perfect circle)
+assert(pred_data, within_bounds(0,1), circularity,
+       description = "Values must be within 0-1 range.")
+
+# Solidity: 0-1 (very smooth surface)
+assert(pred_data, within_bounds(0,1), solidity,
+       description = "Values must be within 0-1 range.")
+
+# Transparency: 0 (least transparent)-1 (most transparent)
+assert(pred_data, within_bounds(0,1), transparency,
+       description = "Values must be within 0-1 range.")
+
+# T/W Ratio: 0-1 (represents a sphere)
+assert(pred_data, within_bounds(0,1), t_w_ratio,
+       description = "Values must be within 0-1 range.")
+
+# Sphericity: 0-1 (perfect circle)
+assert(pred_data, within_bounds(0,1), sphericity,
+       description = "Values must be within 0-1 range.")
+
+# Concavity: 0-1 (rough, spikey surface)
+assert(pred_data, within_bounds(0,1), concavity,
+       description = "Values must be within 0-1 range.")
+
+# Convexity: 0-1 (smooth)
+assert(pred_data, within_bounds(0,1), convexity,
+       description = "Values must be within 0-1 range.")
+
+#L/W Aspect Ratio: 1 (sphere)-infinity
+assert(pred_data, within_bounds(1,Inf), l_w_ratio,
+       description = "Values must be within 1-infinity range.")
+
+# W/T Ratio: 1 (sphere)-infinity
+assert(pred_data, within_bounds(1,Inf), w_t_ratio,
+       description = "Values must be within 1-infinity range.")
+
+# Verify that f_width always is between 0.125-6 range
+assert(pred_data, within_bounds(0,Inf), f_width,
+       description = "Values must be within 0.125-6 range." )
+
+
+}
+
+```
+
+# Model loading
+This is a function for model loading
+```{r load model}
+load_model <- function(model_prefix, models_dir) {
+  #Function load_model: loads model data from Box
+  #Inputs: model_prefix: String of prefix of model variable name (e.g., 'glmnet', 'nb', etc)
+  #        models_dir: directory for models
+  #Outputs: move_type 'load' load variable information into the global environment.
+  #Returns: String of the model loaded from/saved to
+  
+  #Fix the filename
+  rdata_name <- str_c(models_dir, '/', model_prefix, '_modeling_info.RData')
+  load(rdata_name, envir=.GlobalEnv)
+  
+  return(rdata_name)
+}
+```
+
+# Predict using all loading models
+
+```{r predict using fit on selected data}
+predict_both <- function(final_fit, pred_data) {
+  
+  #get prediction class and probabilities
+  class_pred_df <- pred_data %>%
+    bind_cols(predict(final_fit, pred_data)) %>%
+    bind_cols(predict(final_fit, pred_data, type = "prob"))
+  
+  return (class_pred_df)
+}
+```
+
+```{r predict on the data using the provided models}
+
+predict_with_models <- function (models_list, test_data) {
+  
+
+  #create the training prediction data frames and mutate a column with their names
+  model_preds_list <- models_list %>%
+    map(~predict_both(get(str_c(., '_final_fit'), envir=.GlobalEnv), test_data)) %>%
+    map2(models_list, function(df, mdl_name){mutate(df, model_name=mdl_name)})
+  
+  names(model_preds_list) <- models_list
+  
+  #return model predictions as list  
+  return(model_preds_list)
+
+}
+```
+
+# Identify particles which require review 
+
+```{r identify mismatched particles}
+get_pred_correspondence <-function (preds_df_list) {
+  
+  corr_table <- preds_df_list %>%
+    map(~select(., id, img_id, starts_with('.pred'))) %>%
+    purrr::reduce(full_join, suffix=str_c('.', names(preds_df_list)), by=c('id', 'img_id')) %>%
+    select(id, img_id, starts_with('.pred_class'), everything())
+  
+  return(corr_table)
+}
+
+```
+
+
+```{r identify particles of concern}
+review_particles <-function (corr_table) {
+  
+  #convert to long format
+  agreement_table_full <- corr_table %>%
+    #get in long format
+    select(id, img_id, starts_with('.pred_class')) %>%
+    pivot_longer(cols=starts_with('.pred_class'), names_to = 'mdl_class_pred_type', values_to = 'mdl_class_pred') %>%
+    
+    #add counts of each predicted class type and remove repeats
+    add_count(id, img_id, mdl_class_pred, name='value_counts') %>%
+    #distinct(id, img_id, mdl_class_pred, value_counts, .keep_all = TRUE) %>%
+    
+    #add summarizing agreement value for single sample
+    group_by(id, img_id) %>%
+    mutate(agreement_degree = max(value_counts)/n()) %>%
+    ungroup()
+  
+  #get table of agreements
+  agree_only <- agreement_table_full %>%
+    select(id, img_id, mdl_class_pred, agreement_degree) %>%
+    filter(near(agreement_degree,1)) %>%
+    distinct() %>%
+    left_join(corr_table, by=c('id', 'img_id')) %>%
+    select(id, img_id, mdl_class_pred, agreement_degree, sort(colnames(.)), -value_counts) %>%
+    dplyr::relocate(starts_with('.pred_class'), .after=last_col()) 
+  
+  #get table of disagreements
+  disagree_only <- agreement_table_full %>%
+    select(id, img_id, mdl_class_pred, agreement_degree, value_counts) %>%
+    filter(near(agreement_degree,1)==FALSE) %>%
+    group_by(id, img_id) %>%
+    arrange(desc(value_counts)) %>%
+    dplyr::slice(1) %>%
+    ungroup() %>%
+    left_join(corr_table, by=c('id', 'img_id')) %>%
+    select(id, img_id, mdl_class_pred, agreement_degree, sort(colnames(.)), -value_counts, ) %>%
+    dplyr::relocate(starts_with('.pred_class'), .after=last_col()) %>%
+    arrange(desc(agreement_degree))
+  
+  return(list(agreements = agree_only, 
+              disagreements = disagree_only,
+              full_table = agreement_table_full))
+
+}
+
+```
+
+
+# Output the percentage of microdebitage estimated in the sample
+
+```{r percentage microdebitage function}
+
+extract_targets <- function(agree_df, ref_cls, agree_thresh=0.99) {
+  
+  targets_df <- agree_df[['agreements']] %>%
+    bind_rows(agree_df[['disagreements']]) %>%
+    filter(agreement_degree >= agree_thresh & mdl_class_pred==ref_cls)
+  
+  return(targets_df)
+}
+
+```
+
