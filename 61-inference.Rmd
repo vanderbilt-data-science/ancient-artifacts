@@ -27,7 +27,7 @@ The location of the data is relatively flexible, but currently, the model storag
   
 
 ## Using this code
-In the options section below, you'll see provided some empty areas for where you'll add the filepath your data and models.  Make sure to fill these in along with any other options indicated.
+In the options section below, you'll see provided some variables which are all currently set to NULL or the equivalent.  Fill in the correct values for your application.  Note that the code will function with `NULL` being left for `data_filepath` if you want to set it explicitly in the load data chunk, and you can leave `target_colname` `NULL` as well if your data isn't labeled.
 
 Then, Run All Chunks.  The results will be displayed inline.  After the results are produced, save this file, which will automatically be converted into an html document with the name `61-inference.nb.html`.
 
@@ -43,23 +43,24 @@ fs::file_delete("60-inference-helpers.R")
 Set your filepath and class prediction settings here.  Some examples are provided.
 ```{r set inference options}
 #box directory (e.g., 'Volcano_Project' or 'DSI_AncientArtifacts', etc.)
-box_directory <- 'DSI_AncientArtifacts'
-#box_directory <- NULL
+#box_directory <- 'DSI_AncientArtifacts'
+box_directory <- NULL
 
 #data filepath (relative to box directory above, e.g. 'Archaeological Data/data.csv' or 'Archaeological Data/subdirectory/arch_data.csv', etc)
+#direct changes to data filepath can be see in the data loading section below
 data_filepath <- NULL
 
 #provide a list of the prefixes for your final model fits, e.g., 'glmnet', 'nb', etc.  This must be a list, even if it is one single model.
-model_prefix_list <- list('glmnet', 'rf', 'xgb')
-#model_prefix_list = []
+#model_prefix_list <- list('glmnet', 'rf', 'xgb')
+model_prefix_list <- list()
 
 #provide the string or value which corresponds to your target variable (e.g. microdebitage is 'exp')
-target_class <- 'exp'
-#target_class <- NULL
+#target_class <- 'exp'
+target_class <- NULL
 
-#provide the target column name if your data is labeled
-target_colname <- 'particle_class'
-#target_colname <- NULL
+#provide the target column name if your data is labeled, otherwise, leave as null
+#target_colname <- 'particle_class'
+target_colname <- NULL
 
 ```
 
@@ -76,7 +77,7 @@ project_files <- set_inference_filepaths(box_directory, data_filepath)
 test_data <- load_data(project_files[['data_path']])
 
 #here's an example of how you can directly write test data
-test_data <- artifact_data
+#test_data <- artifact_data
 
 # validate data
 validate_data(test_data)
