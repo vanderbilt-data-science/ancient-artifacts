@@ -83,7 +83,8 @@ conf_mat <- calculate_confusion_matrix(hp_training_preds)
 
 
 These results allow us several important insights:
-1. The confusion matrix reflects the distribution of the data
+#glmnet_pred_helper<-function(object, newdata, ...){
+#  predict(object, newx=as.matrix(newdata), type='response', ...)1. The confusion matrix reflects the distribution of the data
 2. The calculated metrics correctly reflect the target class formulation
 3. The performance leaves room for improvement in terms of metrics calculated based on a threshold depending on the objectives of classification.
 
@@ -92,13 +93,10 @@ These results allow us several important insights:
 What parameters are contributing most strongly to the classification?  We'll use permutation importance for this.
 
 ```{r glmnet variable importance, fig.height=6}
-glmnet_pred_helper<-function(object, newdata, ...){
-  predict(object, newx=as.matrix(newdata), ...)
-}
-glmnet_vip <- plot_variable_importance(glmnet_final_fit, newdata=train_data, mdl_name = 'glmnet',
+glmnet_vip <- plot_variable_importance(glmnet_final_fit, assessment_data=test_data, mdl_name = 'glmnet',
                                        positive_class='site',
-                                       pred_wrap=glmnet_pred_helper,
-                                       lambda=glmnet_final_fit$fit$fit$spec$args$penalty)
+                                       pred_wrap=NULL,
+                                       nothing=glmnet_final_fit$fit$fit$spec$args$penalty)
 ```
 Of previous interest was transparency, solidity, and other metrics for discerning the different classes.  Here, we can make several observations:
 

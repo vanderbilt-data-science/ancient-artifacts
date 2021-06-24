@@ -12,11 +12,11 @@ pacman::p_load(yardstick, precrec, vip,
 
 # Prediction with defined outcomes
 ```{r predict using fit on selected data}
-get_prediction_dataframes <- function(final_fit, pred_data) {
+get_prediction_dataframes <- function(final_fit, pred_data, ...) {
   
   #get prediction class and probabilities
   class_pred_df <- 
-    predict(final_fit, pred_data) %>%
+    predict(final_fit, pred_data, ...) %>%
     bind_cols(predict(final_fit, pred_data, type = "prob")) %>% 
     bind_cols(pred_data %>% 
                 select(particle_class))
@@ -202,13 +202,17 @@ plot_performance_curves <- function(pred_dfs, model_names=NULL, pos_class='exp')
 ```
 
 # Variable Importance
-**Note about the following function:** There is a real oddity about the behavior of `vi_permute`.  Providing a single interface like this to a set of functions which have differing implementations somewhat has resulted in some oddball behavior.  The primary oddity is as follows:
+**Note about the following function:** There is a real oddity about the behavior of `vi_permute`.  Providing a single interface like this to a set of functions which have differing implementations somewhat has resulted in some oddball behavior.  The primary oddities as follows:
+
+## glmnet
+Consider the documentation of the [0.3.2 documentation of vi_permute.R](https://rdrr.io/cran/vip/src/R/vi_permute.R).  Lines 339-341 show the inputs to the predict function.  According to the predict function of glmnet documented [here](https://github.com/cran/glmnet/blob/master/R/predict.glmnet.R), it needs to receive parameters `newx`(to specify the data to be predicted on) and `s` (if you want to specify a penalty value).  Since the model is evaluated at a specific penalty, specifying this value is important.  Additionally, the default `predict` method incorrectly specifies `newx` as `newdata`.  For this reason, two wrappers are implemented - first in th 51-glmnet-performance to fix the `newdata` issue and within this function to correctly specify `s`.  This makes this function much more complicated unfortunately.
+
 
 The [0.3.2 documentation of vi_permute.R](https://rdrr.io/cran/vip/src/R/vi_permute.R) makes changes to the ordering of the factors based on mfun (here, `metric_auc`, source in [metrics.R](https://rdrr.io/cran/vip/src/R/metrics.R)).  This results in curious behavior across models, as the output of the `predict` function must align with these values.  This may need to be changed to accommodate our current factor orderings.  This additionally affects the tree-based models as their implementation for predict seems to differ from the glmnet and naiveBayes models.  The xgboost implementation [boost_tree.R](https://github.com/tidymodels/parsnip/blob/master/R/boost_tree.R) and random forest implementation  [rand_forest_data.R](https://github.com/tidymodels/parsnip/blob/master/R/rand_forest_data.R) in parsnip are listed for reference and inspection.  It may be more straightforward to use their default permutation implementations, but whether that is identical to results of the `vi_permute` function from vip should be evaluated. 
 
 
 ```{r generic plot for variable importance}
-plot_variable_importance <- function(wkflw, newdata, mdl_name=NULL, pred_wrap=predict, plot_type='default',
+plot_variable_importance <- function(wkflw, assessment_data, mdl_name=NULL, pred_wrap=predict, plot_type='default',
                                      p_metric='auc', target='particle_class', positive_class='exp', smaller_is_better=NULL,...){
   #Function plot_variable_importance plots permutation importance
   #Inputs: wkflw: fitted final fit (workflow object)
@@ -240,7 +244,7 @@ plot_variable_importance <- function(wkflw, newdata, mdl_name=NULL, pred_wrap=pr
   mdl_fit <- wkflw$fit$fit$fit
   
   #apply recipe to dataset
-  baked_data <- bake(mdl_recipe, newdata)
+  baked_data <- bake(mdl_recipe, assessment_data)
   
   #drop columns which aren't modeled
   keep_cols <- mdl_recipe$var_info %>%
@@ -250,20 +254,32 @@ plot_variable_importance <- function(wkflw, newdata, mdl_name=NULL, pred_wrap=pr
   prepped_data <- baked_data %>%
     select(all_of(keep_cols))
   
-   #workaround for glmnet
-  if(names(list(...))=='lambda')
-  {
-    lambda_val = list(...)[['lambda']]
-    pred_wrapper <- function(object, newdata, lambda=eval(lambda_val))
-    {
-      pred_wrap(object, newdata, lambda=lambda, ...)
-    }
+  pred_wrapper<-function(object, newdata, ref_cls = positive_class){
+    #message('here')
+    #print(colnames(new_data))
+    #predict(object, new_data=newdata, type='class')
+    res <- predict(object, new_data=newdata, type='class')
+    pred_vec <- ifelse(res$.pred_class==ref_cls, yes=1, no=0)
+    print(pred_vec[1:10])
+    return (pred_vec)
   }
   
+   #workaround for glmnet
+  # if((...length()!=0) & (names(list(...))=='lambda'))
+  # {
+  #   lambda_val = list(...)[['lambda']]
+  #   pred_wrapper <- function(object, newdata, lambda=eval(lambda_val))
+  #   {
+  #     pred_wrap(object, newdata, s=lambda, ...)
+  #   }
+  # } else {
+  #   pred_wrapper <- pred_wrap
+  # }
+  
   #get permutation importance
-  vip_res <- vi_permute(object=mdl_fit, train=prepped_data, target=target,
+  vip_res <- vi_permute(object=mdl, train=assessment_data, target=target,
                         metric=p_metric, pred_wrapper=pred_wrapper, reference_class=positive_class,
-                        smaller_is_better=smaller_is_better,...)
+                        smaller_is_better=smaller_is_better, new_data=assessment_data)
   
   #determine plot base
   if(plot_type=='default'){
