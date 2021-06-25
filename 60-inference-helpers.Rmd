@@ -6,7 +6,7 @@ output: html_document
 # Helper functions for performing inference
 
 # Usage
-Trying to perform inference on your dataset?  This can be done using the 61-inference notebook!  For an example of usage, see the 62-inference-demo notebook.
+Trying to perform inference on your dataset?  This can be done using the 61-inference notebook!  For an example of usage, see the 61-inference-demo.html file in the main repo directory.
 
 # Setup project
 
