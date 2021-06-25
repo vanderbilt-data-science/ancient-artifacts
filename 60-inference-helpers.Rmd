@@ -86,8 +86,8 @@ load_model <- function(model_prefix, models_dir) {
 predict_probs <- function(final_fit, pred_data) {
   #Helper function (shouldn't be called directly) to predict probabilties from models
   #Inputs: final_fit: workflow fit from tidymodels
-  #        pred_data: dataframe upon which predictions will be done.  Can include target column, but wil not be used.
-  #Outputs: dataframe with prediction probabilies for classes and the classes based on the default threshold of 0.5
+  #        pred_data: tibble upon which predictions will be done.  Can include target column, but wil not be used.
+  #Outputs: tibble with prediction probabilies for classes and the classes based on the default threshold of 0.5
   
   #get prediction class and probabilities
   class_pred_df <- pred_data %>%
@@ -104,8 +104,8 @@ predict_with_models <- function (models_list, test_data) {
   #Predicts using all the models in the provided model list.  Assumes all models are in the
   #global environment with format [model_prefix]_final_fit, (e.g., glmnet_final_fit)
   #Inputs: models_list: list of model prefixes for tidymodels workflow model (e.g., nb, xgb)
-  #        test_data: dataframe to be predicted on
-  #Returns: a named list of prediction dataframes, named by the models_list input
+  #        tibble: dataframe to be predicted on
+  #Returns: a named list of prediction tibbles, named by the models_list input
   
 
   #create the training prediction data frames and mutate a column with their names
@@ -126,9 +126,9 @@ predict_with_models <- function (models_list, test_data) {
 ```{r select and rename helper}
 select_and_rename <- function(df, df_name){
   #helper function (should not be called directly) to assist with creating wide data for multiple joins
-  #Inputs: df: dataframe to be renamed
-  #        df_name: string name of dataframe (i.e., model prefix)
-  #Outputs: selected and renamed dataframe with prediction colnames with desired prefix
+  #Inputs: df: tibble to be renamed
+  #        df_name: string name of tibble (i.e., model prefix)
+  #Outputs: selected and renamed tibble with prediction colnames with desired prefix
 
   res <- df %>%
     select(id, img_id, starts_with('.pred')) %>%
@@ -144,8 +144,8 @@ select_and_rename <- function(df, df_name){
 get_pred_correspondence <-function (preds_df_list) {
   #Builds a correspondence table by essentially joining all the predictions together.
   #Provided in long format so that this can be easily perused by readers/users
-  #Inputs: preds_df_list (named list of prediction dataframes (e.g., from predict_with_models function))
-  #Returns: wide dataframe of prediction dataframe with prediction probabilities for each model type and classes
+  #Inputs: preds_df_list (named list of prediction tibbles (e.g., from predict_with_models function))
+  #Returns: wide tibble of prediction tibbles with prediction probabilities for each model type and classes
   
   corr_table <- preds_df_list %>%
     map2(names(preds_df_list), select_and_rename) %>%
@@ -160,9 +160,9 @@ get_pred_correspondence <-function (preds_df_list) {
 
 ```{r identify particles of concern}
 review_particles <-function (corr_table) {
-  #Generates review dataframes based on model voting to establish predicted class
-  #Inputs: corr_table: a wide dataframe from prediction (e.g., from get_pred_corresondence)
-  #Outputs: named list of dataframes: agreements: where all of the models totally agree
+  #Generates review tibble based on model voting to establish predicted class
+  #Inputs: corr_table: a wide tibble from prediction (e.g., from get_pred_corresondence)
+  #Outputs: named list of tibbles: agreements: where all of the models totally agree
   #                                   disagreements: where the models disagree
   #                                   full_table: long table of all votes and tallys by the model.  Note that the ids here will not be unique.
   
@@ -217,11 +217,11 @@ review_particles <-function (corr_table) {
 
 extract_targets <- function(agree_df, ref_cls, agree_thresh=0.99) {
   #extract the target class (e.g., microdebitage) from the voted-upon dataset
-  #agree_df: named list of dataframes with agreements and disagreements (e.g., from review_particles)
+  #agree_df: named list of tibbles with agreements and disagreements (e.g., from review_particles)
   #ref_cls: string of the target class to be identified (e.g., 'exp' for microdebitage)
   #agree_thresh: float value for if models have disagreements, all values >= this value will be considered to be the target 
   #              if the target was predicted (i.e. majority-like voting)
-  #Returns: dataframe of all particles identified to be the target class
+  #Returns: tibble of all particles identified to be the target class
   
   targets_df <- agree_df[['agreements']] %>%
     bind_rows(agree_df[['disagreements']]) %>%
@@ -236,13 +236,13 @@ extract_targets <- function(agree_df, ref_cls, agree_thresh=0.99) {
 ```{r identify misclassified}
 get_misclassified <- function(agree_df, pred_data, target_col, ref_cls) {
   #returns the misclassified particles ordered by increasing probability
-  #Inputs: agree_df: named list of dataframes with agreements and disagreements (e.g., from review_particles)
-  #        pred_data: dataframe for prediction
+  #Inputs: agree_df: named list of tibbles with agreements and disagreements (e.g., from review_particles)
+  #        pred_data: tibble for prediction
   #        target_col: name of the target column
   #        ref_cls: name of the class of interest (e.g., 'exp' for microdebitage)
-  #Returns: named list of dataframes: full_misclass - all of the misclassified data
-  #                                   agree_misclass - subset of full_misclass for the agreed upon class prediction
-  #                                   disagree_misclass - subset of full_misclass where the models did not agree
+  #Returns: named list of tibbles: full_misclass - all of the misclassified data
+  #                                agree_misclass - subset of full_misclass for the agreed upon class prediction
+  #                                disagree_misclass - subset of full_misclass where the models did not agree
   
   ag_df <- agree_df[['agreements']] %>%
     mutate(vote_type = 'agree')
@@ -274,7 +274,7 @@ From above, to assist with making assertions on the behavior of PartAn data
 
 validate_data <- function(pred_data) {
   #performs validation upon the input data
-  #Inputs: pred_data: partAn data to be analyzed
+  #Inputs: pred_data: tibble of partAn data to be validated
   #Outputs: failed assertions, if any
   
   # Angularity: 0 (perfect circle)-180 (many sharp edges)
