@@ -29,85 +29,50 @@ Here, I'll add the cross validation splits for tuning.  We'll use 5 fold cross-v
 cv_folds <- vfold_cv(train_data, v=5, strata=particle_class)
 cv_folds
 ```
+
+# Model-based variable importance
+```{r variable importance helper}
+get_vip <- function(final_fit, ...){
+  model_vip <- final_fit %>%
+    pull_workflow_fit() %>%
+    vi_model(...)
+  
+  if('Sign' %in% colnames(model_vip)){
+    model_vip <- model_vip %>%
+      mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
+  } else {
+    model_vip <- model_vip %>%
+      mutate(association = 'mdl')
+  }
+}
+
+```
+
 ```{r generalized variable importance function}
-variable_importance <-function(final_fit) {
-  if(model_type == "xgboost") { 
-xgb_vip <- xgb_final_fit %>%
-  pull_workflow_fit() %>%
-  vi_model() %>%
-  mutate(scaled_imp = Importance/sum(Importance))
-
-xgb_vip %>%
-  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
-  geom_col() +
-  coord_flip() +
-  labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('eta:', format(pull_workflow_fit(xgb_final_fit)$spec$args$mtry,
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'gamma:', format(pull_workflow_fit(xgb_final_fit)$spec$args$min_n[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable')}
+model_variable_importance <-function(final_fit) {
   
-else if (model_type == "tree") {
-rf_vip <- rf_final_fit %>%
-  pull_workflow_fit() %>%
-  vi_model() %>%
-  mutate(scaled_imp = Importance/sum(Importance)) 
-
-rf_vip %>%
-  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=scaled_imp)) +
-  geom_col() +
-  coord_flip() +
-  labs(title='Variable Importance in Random Forest',
-       subtitle=str_c('Mtry:', format(pull_workflow_fit(rf_final_fit)$spec$args$mtry,
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'Min_n:', format(pull_workflow_fit(rf_final_fit)$spec$args$min_n[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable')}
-
-  else if (model_type == "naivebayes") {
-nb_vip <- nb_final_fit %>%
-  pull_workflow_fit() %>%
-  caret::varImp(lambda = .$spec$args$penalty) %>%
-  mutate(scaled_imp = Importance/sum(Importance)) %>%
-  mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
-
-nb_vip %>%
-  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
-  geom_col() +
-  coord_flip() +
-  labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable') }
+  model_type <- class(pull_workflow_spec(final_fit))[[1]]
   
-else {
-glmnet_vip <- glmnet_final_fit %>%
-  pull_workflow_fit() %>%
-  vi_model(lambda = .$spec$args$penalty) %>%
-  mutate(scaled_imp = Importance/sum(Importance)) %>%
-  mutate(association = if_else(Sign=='NEG', 'exp', 'site'))
-
-glmnet_vip %>%
-  ggplot(aes(x=fct_reorder(Variable, scaled_imp), y=scaled_imp, fill=association))+
-  geom_col() +
-  coord_flip() +
-  labs(title='Scaled coefficient magnitudes of glmnet',
-       subtitle=str_c('Penalty:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$penalty,
-                                         digits=5, nsmall=2, scientific=TRUE),
-                      'Mixture:', format(pull_workflow_fit(glmnet_final_fit)$spec$args$mixture[[2]],
-                                         digits=5, nsmall=3),
-                      sep=' '),
-       y='scaled absolute importance',
-       x='variable')}
-return (vip)
+  if(model_type=='logistic_reg'){
+    model_vip <- get_vip(final_fit, lambda = final_fit$fit$fit$spec$args$penalty)
+  } else if (model_type=='rand_forest' | model_type=='boost_tree'){
+    model_vip <- get_vip(final_fit)
+  } else {
+    stop('Model-based variable importance only supported for logistic regression, random forest, and boost models.')
+  }
+  
+  plt <- model_vip %>%
+    ggplot(aes(x=fct_reorder(Variable, Importance), y=Importance, fill=association))+
+    geom_col() +
+    coord_flip() +
+    labs(title='Model-based variable importance',
+         subtitle=str_c('for model type ', model_type),
+         y='model-based importance',
+         x='variable')
+  
+  print(plt)
+  
+  return(model_vip)
 }
 ```
+
