@@ -15,8 +15,11 @@
 /*.Rcheck/
 
 # RStudio files
-.Rproj.user/
+.Rproj.user
 *.Rproj
+
+#OSX files
+.DS_Store
 
 # R knit files
 *.nb.html

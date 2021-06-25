@@ -82,6 +82,3 @@ move_model_info <- function(model_prefix, move_type='save', file_post=NULL, box_
 }
 ```
 
-
-
-
