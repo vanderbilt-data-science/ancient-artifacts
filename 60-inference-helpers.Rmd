@@ -1,0 +1,327 @@
+---
+title: "60-inference-helpers"
+output: html_document
+---
+
+# Helper functions for performing inference
+
+# Usage
+Trying to perform inference on your dataset?  This can be done using the 61-inference notebook!  For an example of usage, see the 62-inference-demo notebook.
+
+# Setup project
+
+```{r import packages, results='hide'}
+if (!require("pacman"))
+   install.packages("pacman")
+
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("50-reporting.R")
+
+pacman::p_load(tidyverse, janitor, assertr, forcats, purrr, fs,
+               tidymodels, glmnet, ranger, naivebayes, discrim, xgboost)
+```
+
+
+```{r inference setup options}
+set_inference_filepaths <- function(project_dir, data_path) {
+  #simple helper for setting filepaths
+  #Inputs: project_dir: string of name of project directory in Box (no leading slash)
+  #        data_path: string of path to data and filename from the project_dir (no leading slash)
+  #Returns: named list of base_dir (base Box directory), data_path (full path of data file), and models_dir (full path to model directory)
+  
+  base_dir <- path.expand(str_c('~/../Box/', project_dir))
+  data_path <- str_c(base_dir, data_path, sep='/')
+  models_dir <- str_c(base_dir, 'RData', sep='/')
+  
+  return(list(base_dir = base_dir,
+              data_path = data_path,
+              models_dir = models_dir))
+}
+```
+
+```{r load and fix data}
+load_data <- function(data_path) {
+  #loads the data from the provided filepath
+  #Inputs: data_path: path to csv file
+  #Returns: dataframe with clean names and correct data types
+  
+  #read raw data and fix subheader row
+  df_data <- read_csv(data_path) %>%
+    clean_names() %>%
+    dplyr::slice(-1L) %>%
+    mutate(across(c(-starts_with('Filter'), -id, -img_id), as.double)) %>%
+    mutate(id = as.character(id), img_id = as.character(img_id))
+  
+  #return df data
+  return(df_data)
+}
+
+```
+
+
+# Validate prediction 
+At bottom due to function length
+
+# Model loading
+This is a function for model loading
+```{r load model}
+load_model <- function(model_prefix, models_dir) {
+  #Function load_model: loads model data from Box
+  #Inputs: model_prefix: String of prefix of model variable name (e.g., 'glmnet', 'nb', etc)
+  #        models_dir: directory for models
+  #Outputs: move_type 'load' load variable information into the global environment.
+  #Returns: String of the model loaded from/saved to
+  
+  #Fix the filename
+  rdata_name <- str_c(models_dir, '/', model_prefix, '_modeling_info.RData')
+  load(rdata_name, envir=.GlobalEnv)
+  
+  return(rdata_name)
+}
+```
+
+# Predict using all loaded models
+
+```{r predict using fit on selected data}
+predict_probs <- function(final_fit, pred_data) {
+  #Helper function (shouldn't be called directly) to predict probabilties from models
+  #Inputs: final_fit: workflow fit from tidymodels
+  #        pred_data: dataframe upon which predictions will be done.  Can include target column, but wil not be used.
+  #Outputs: dataframe with prediction probabilies for classes and the classes based on the default threshold of 0.5
+  
+  #get prediction class and probabilities
+  class_pred_df <- pred_data %>%
+    bind_cols(predict(final_fit, pred_data)) %>%
+    bind_cols(predict(final_fit, pred_data, type = "prob"))
+  
+  return (class_pred_df)
+}
+```
+
+```{r predict on the data using the provided models}
+
+predict_with_models <- function (models_list, test_data) {
+  #Predicts using all the models in the provided model list.  Assumes all models are in the
+  #global environment with format [model_prefix]_final_fit, (e.g., glmnet_final_fit)
+  #Inputs: models_list: list of model prefixes for tidymodels workflow model (e.g., nb, xgb)
+  #        test_data: dataframe to be predicted on
+  #Returns: a named list of prediction dataframes, named by the models_list input
+  
+
+  #create the training prediction data frames and mutate a column with their names
+  model_preds_list <- models_list %>%
+    map(~predict_probs(get(str_c(., '_final_fit'), envir=.GlobalEnv), test_data)) %>%
+    map2(models_list, function(df, mdl_name){mutate(df, model_name=mdl_name)})
+  
+  names(model_preds_list) <- models_list
+  
+  #return model predictions as list  
+  return(model_preds_list)
+
+}
+```
+
+# Identify particles which require review 
+
+```{r select and rename helper}
+select_and_rename <- function(df, df_name){
+  #helper function (should not be called directly) to assist with creating wide data for multiple joins
+  #Inputs: df: dataframe to be renamed
+  #        df_name: string name of dataframe (i.e., model prefix)
+  #Outputs: selected and renamed dataframe with prediction colnames with desired prefix
+
+  res <- df %>%
+    select(id, img_id, starts_with('.pred')) %>%
+    rename_with(.fn = ~str_c(., '.',  df_name), .cols=starts_with('.pred'))
+  
+  return(res)
+}
+
+```
+
+
+```{r identify mismatched particles}
+get_pred_correspondence <-function (preds_df_list) {
+  #Builds a correspondence table by essentially joining all the predictions together.
+  #Provided in long format so that this can be easily perused by readers/users
+  #Inputs: preds_df_list (named list of prediction dataframes (e.g., from predict_with_models function))
+  #Returns: wide dataframe of prediction dataframe with prediction probabilities for each model type and classes
+  
+  corr_table <- preds_df_list %>%
+    map2(names(preds_df_list), select_and_rename) %>%
+    purrr::reduce(full_join, by=c('id', 'img_id')) %>%
+    select(id, img_id, starts_with('.pred_class'), sort(colnames(.)))
+  
+  return(corr_table)
+}
+
+```
+
+
+```{r identify particles of concern}
+review_particles <-function (corr_table) {
+  #Generates review dataframes based on model voting to establish predicted class
+  #Inputs: corr_table: a wide dataframe from prediction (e.g., from get_pred_corresondence)
+  #Outputs: named list of dataframes: agreements: where all of the models totally agree
+  #                                   disagreements: where the models disagree
+  #                                   full_table: long table of all votes and tallys by the model.  Note that the ids here will not be unique.
+  
+  #convert to long format
+  agreement_table_full <- corr_table %>%
+    #get in long format
+    select(id, img_id, starts_with('.pred_class')) %>%
+    pivot_longer(cols=starts_with('.pred_class'), names_to = 'mdl_class_pred_type', values_to = 'mdl_class_pred') %>%
+    
+    #add counts of each predicted class type and remove repeats
+    add_count(id, img_id, mdl_class_pred, name='value_counts') %>%
+    #distinct(id, img_id, mdl_class_pred, value_counts, .keep_all = TRUE) %>%
+    
+    #add summarizing agreement value for single sample
+    group_by(id, img_id) %>%
+    mutate(agreement_degree = max(value_counts)/n()) %>%
+    ungroup()
+  
+  #get table of agreements
+  agree_only <- agreement_table_full %>%
+    select(id, img_id, mdl_class_pred, agreement_degree) %>%
+    filter(near(agreement_degree,1)) %>%
+    distinct() %>%
+    left_join(corr_table, by=c('id', 'img_id')) %>%
+    select(id, img_id, mdl_class_pred, agreement_degree, sort(colnames(.))) %>%
+    dplyr::relocate(starts_with('.pred_class'), .after=last_col()) 
+  
+  #get table of disagreements
+  disagree_only <- agreement_table_full %>%
+    select(id, img_id, mdl_class_pred, agreement_degree, value_counts) %>%
+    filter(near(agreement_degree,1)==FALSE) %>%
+    group_by(id, img_id) %>%
+    arrange(desc(value_counts)) %>%
+    dplyr::slice(1) %>%
+    ungroup() %>%
+    left_join(corr_table, by=c('id', 'img_id')) %>%
+    select(id, img_id, mdl_class_pred, agreement_degree, sort(colnames(.)), -value_counts) %>%
+    dplyr::relocate(starts_with('.pred_class'), .after=last_col()) %>%
+    arrange(desc(agreement_degree))
+  
+  return(list(agreements = agree_only, 
+              disagreements = disagree_only,
+              full_table = agreement_table_full))
+
+}
+
+```
+
+# Output the percentage of microdebitage estimated in the sample
+
+```{r percentage microdebitage function}
+
+extract_targets <- function(agree_df, ref_cls, agree_thresh=0.99) {
+  #extract the target class (e.g., microdebitage) from the voted-upon dataset
+  #agree_df: named list of dataframes with agreements and disagreements (e.g., from review_particles)
+  #ref_cls: string of the target class to be identified (e.g., 'exp' for microdebitage)
+  #agree_thresh: float value for if models have disagreements, all values >= this value will be considered to be the target 
+  #              if the target was predicted (i.e. majority-like voting)
+  #Returns: dataframe of all particles identified to be the target class
+  
+  targets_df <- agree_df[['agreements']] %>%
+    bind_rows(agree_df[['disagreements']]) %>%
+    filter(agreement_degree >= agree_thresh & mdl_class_pred==ref_cls)
+  
+  return(targets_df)
+}
+
+```
+
+# Assess misclassification
+```{r identify misclassified}
+get_misclassified <- function(agree_df, pred_data, target_col, ref_cls) {
+  #returns the misclassified particles ordered by increasing probability
+  #Inputs: agree_df: named list of dataframes with agreements and disagreements (e.g., from review_particles)
+  #        pred_data: dataframe for prediction
+  #        target_col: name of the target column
+  #        ref_cls: name of the class of interest (e.g., 'exp' for microdebitage)
+  #Returns: named list of dataframes: full_misclass - all of the misclassified data
+  #                                   agree_misclass - subset of full_misclass for the agreed upon class prediction
+  #                                   disagree_misclass - subset of full_misclass where the models did not agree
+  
+  ag_df <- agree_df[['agreements']] %>%
+    mutate(vote_type = 'agree')
+  disag_df <- agree_df[['disagreements']] %>%
+    mutate(vote_type = 'disagree')
+  
+  arb_sort_col <- str_extract(colnames(ag_df), str_c('.pred_', ref_cls, '.*'))
+  arb_sort_col <- arb_sort_col[!is.na(arb_sort_col)]
+  arb_sort_col <- arb_sort_col[[1]]
+  
+  misclas_df <- ag_df %>%
+    bind_rows(disag_df) %>%
+    inner_join(select(pred_data, id, img_id, all_of(target_col)), by=c('id', 'img_id')) %>%
+    filter(mdl_class_pred!= get(target_col)) %>%
+    mutate(misclass_type = ifelse(get(target_col)==ref_cls, 'fn', 'fp')) %>%
+    select(id, img_id, mdl_class_pred, all_of(target_col), misclass_type, everything()) %>%
+    arrange(get(arb_sort_col))
+  
+  return(list(full_misclass = misclas_df,
+              agree_misclass = filter(misclas_df, vote_type=='agree'),
+              disagree_misclass = filter(misclas_df, vote_type=='disagree')))
+}
+```
+
+## Validation function
+From above, to assist with making assertions on the behavior of PartAn data
+
+```{r validate prediction dataframe }
+
+validate_data <- function(pred_data) {
+  #performs validation upon the input data
+  #Inputs: pred_data: partAn data to be analyzed
+  #Outputs: failed assertions, if any
+  
+  # Angularity: 0 (perfect circle)-180 (many sharp edges)
+assert(pred_data, within_bounds(0,180), angularity, 
+       description = "Values must be within 0-180 range.")
+
+# Circularity: 0-1 (perfect circle)
+assert(pred_data, within_bounds(0,1), circularity,
+       description = "Values must be within 0-1 range.")
+
+# Solidity: 0-1 (very smooth surface)
+assert(pred_data, within_bounds(0,1), solidity,
+       description = "Values must be within 0-1 range.")
+
+# Transparency: 0 (least transparent)-1 (most transparent)
+assert(pred_data, within_bounds(0,1), transparency,
+       description = "Values must be within 0-1 range.")
+
+# T/W Ratio: 0-1 (represents a sphere)
+assert(pred_data, within_bounds(0,1), t_w_ratio,
+       description = "Values must be within 0-1 range.")
+
+# Sphericity: 0-1 (perfect circle)
+assert(pred_data, within_bounds(0,1), sphericity,
+       description = "Values must be within 0-1 range.")
+
+# Concavity: 0-1 (rough, spikey surface)
+assert(pred_data, within_bounds(0,1), concavity,
+       description = "Values must be within 0-1 range.")
+
+# Convexity: 0-1 (smooth)
+assert(pred_data, within_bounds(0,1), convexity,
+       description = "Values must be within 0-1 range.")
+
+#L/W Aspect Ratio: 1 (sphere)-infinity
+assert(pred_data, within_bounds(1,Inf), l_w_ratio,
+       description = "Values must be within 1-infinity range.")
+
+# W/T Ratio: 1 (sphere)-infinity
+assert(pred_data, within_bounds(1,Inf), w_t_ratio,
+       description = "Values must be within 1-infinity range.")
+
+# Verify that f_width always is between 0.125-6 range
+assert(pred_data, within_bounds(0,Inf), f_width,
+       description = "Values must be within 0.125-6 range." )
+
+}
+
+```
+

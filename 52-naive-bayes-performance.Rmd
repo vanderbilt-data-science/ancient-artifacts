@@ -1,0 +1,92 @@
+---
+title: "52-naive-bayes-performance"
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+---
+
+In this notebook we explore the performance of the Naive Bayes model. Additionally, we will confirm the behavior of cross validation
+and hyperparameter tuning.
+
+**Make sure you run the 42-naivebayes-modeling notebook before attempting to run this notebook to generate new results**
+
+```{r load required packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
+fs::file_delete("50-reporting.R")
+
+pacman::p_load(vip)
+```
+
+# Load Saved Data
+```{r load saved nb}
+move_model_info('nb', 'load')
+```
+
+# Selected Model Performance Evaluation
+## Cross validation metrics from best model
+Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
+```{r best model cross validation}
+#get best nb metrics
+best_nb_fold_metrics <- calculate_best_performance_metrics(nb_fold_metrics, best_nb_params)
+best_nb_fold_metrics %>%
+  group_by(.metric) %>% 
+  summarize(overall_perf = mean(.estimate))
+
+```
+We see very high values for accuracy, npv, and spec, all of which point to this model being one of the "outliers" we discussed earlier. 
+
+## Performance on training data as a whole
+Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
+```{r extract and visualize training performance}
+#get prediction class and probabilities
+nb_training_preds <- get_prediction_dataframes(nb_final_fit, train_data)
+
+#plot and calculate confusion matrix
+calculate_confusion_matrix(nb_training_preds)
+```
+Here we see there were roughly 7,500 particles that we truly site particles that were classified as lithic samples. The overall accuracy remains around 83.7% and precision at 20%.
+
+# Explaining the model
+## Variable imporance
+What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
+
+```{r nb variable importance, fig.height=6}
+nb_vip <- plot_variable_importance(nb_final_fit, assessment_data=train_data, mdl_name = 'nb', positive_class='exp')
+```
+Here we can clearly see a common thread through many of the models. The Naive bayes model also weighted transparency incredibly high followed by the typical compactness, roundness, and l_t_ratio which were also common candidates for high importance variables. 
+
+## ROC curves
+```{r}
+plot_performance_curves(nb_training_preds)
+```
+These curves demonstrate sub-optimal performance, particularly in comparison with the performance of other models.  This will likely not be the best model to use for prediction.
+
+##Calibration curve
+```{r visualize the model calibration}
+#get prediction class and probabilities
+plot_calibration_curve(nb_training_preds)
+```
+The calibration curve is abysmal, and thus we can conclude that the scores generated from the model in no way reflect true probabilities.  If this model is desired to be used (probably not in the context of the other models), and the scores are desired to be used as probabilities, extra calibration must be done on this model to adjust the scores appropriately.
+
+##Threshold for particles
+```{r visualize classification for particles and their threshold}
+#get prediction class and probabilities
+plot_prediction_probabilities(nb_training_preds)
+```
+
+```{r}
+plot_label_by_score(nb_training_preds)
+```
+This model does not appear to have a very strong threshold, particularly at the default threshold of 0.5.  This is relatively reflected in the ROC curve, where better performance is achieved in a very specific corner of the ROC curve.  This model, if used, would additionally require a specifically identified threshold, as 0.5 does not appear here to show a strong delineation threshold.  The threshold actually appears to be closer to around 0.8.  This conclusion is also substantiated by the calibration curve, which suggests that the model likes to predict higher scores - or if considered probabilities - than they actually should be.
+
+# Save markdown file
+```{r save markdown}
+#fs::file_copy('52-naive-bayes-performance.nb.html', './html_results/52-naive-bayes-performance.nb.html', overwrite=TRUE)
+```
+

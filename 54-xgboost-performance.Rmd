@@ -1,0 +1,79 @@
+---
+title: "54-xgboost-performance"
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: true
+---
+
+
+In this notebook we explore the performance of the Xgboost model. Additionally, we will confirm the behavior of cross validation and hyperparameter tuning. 
+
+**Make sure you run the 43-xgboost-modeling notebook before attempting to run this notebook if you want to generate new results.**
+
+```{r load required packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
+fs::file_delete("50-reporting.R")
+
+pacman::p_load(vip,xgboost,recipes, parsnip)
+```
+
+# Load Saved Data
+```{r load saved xgboost}
+#move_model_info('xgb', 'load');
+```
+
+# Selected Model Performance Evaluation
+## Cross validation metrics from best model
+Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
+```{r best model cross validation}
+#get best xgboost metrics
+best_xgb_fold_metrics <- calculate_best_performance_metrics(xgb_fold_metrics, best_xgb_params)
+best_xgb_fold_metrics %>%
+  group_by(.metric) %>% 
+  summarize(overall_perf = mean(.estimate))
+```
+
+## Performance on training data as a whole
+Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
+```{r extract and visualize training performance}
+#get prediction class and probabilities
+xgb_training_preds <- get_prediction_dataframes(xgb_final_fit, train_data)
+#plot and calculate confusion matrix
+t1 <- calculate_confusion_matrix(xgb_training_preds)
+```
+
+# Explaining the model
+## Variable importance
+What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!
+
+```{r xgb variable importance, fig.height=6}
+xgb_vip <- plot_variable_importance(xgb_final_fit, assessment_data=train_data, mdl_name = 'xgb', positive_class='exp')
+```
+
+Here, we can see that transparency is weighted as drastically important compared to all of the other factors followed by solidity. All of the other factors aside from these 3 are weighted as fairly similar in importance.
+
+```{r visualize the model calibraton}
+plot_calibration_curve(xgb_training_preds)
+```
+This calibration curve suggests a pretty well calibrated model, particularly in the low probabilities.  As the probabilities increase, the model becomes a little under-confident in its prediction probabilities (predicts probabilities that are a little lower than they should be.  This does occur around 0.42, meaning that probabilities around this area may need to be investigated for this model.
+
+```{r visualize the ROC curves}
+plot_performance_curves(xgb_training_preds, model_names='xgboost',pos_class='exp')
+```
+These curves reflect relatively good training performance.  This shows that this model type is able to learn on this data.
+
+```{r a sense of xgb thresholding}
+plot_label_by_score(xgb_training_preds)
+```
+These results suggest that the threshold of 0.5 seems to be about right for general purpose investigation and further changes to this threshold will need to be based on the use-case.
+
+# Save markdown file
+```{r save markdown}
+#fs::file_copy('54-xgboost-performance.nb.html', './html_results/54-xgboost-performance.nb.html', overwrite=TRUE)
+```

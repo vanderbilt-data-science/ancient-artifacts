@@ -1,0 +1,166 @@
+---
+title: "55-cv-comparison"
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: true
+---
+
+In this notebook, we compare the effectiveness of the various model types based on the performance of cross validation metrics and backprojection. 
+
+### Useful packages
+```{r load required packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
+fs::file_delete("50-reporting.R")
+```
+
+### Load data (if desired)
+```{r load all models}
+mdl_list <- list('glmnet', 'nb', 'rf', 'xgb')
+map(mdl_list, ~move_model_info(., 'load'))
+```
+
+# Cross-validation metrics
+## Aggregate performance metrics
+```{r aggregating hyperparameter tuning/cross validation metrics}
+#get best performance metrics for all models
+best_fold_metrics <- mdl_list %>%
+  map(~calculate_best_performance_metrics(get(str_c(., '_fold_metrics')), 
+                                          get(str_c('best_', ., '_params')), .))
+#name each element in list
+names(best_fold_metrics) <- mdl_list
+
+#aggregate all fold metrics and mutate all names
+best_fold_metrics <- best_fold_metrics %>%
+  map(~select(., id, .metric, .estimate, .config)) %>%
+  map2_dfr(names(best_fold_metrics), function(df, mdl_name){mutate(df, modeltype=mdl_name)})
+```
+
+## Basic performance overview
+Let's just look at the overall distribution of the metrics.
+```{r overall performance}
+best_fold_metrics %>%
+  mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
+  ggplot(aes(x=.metric, y=.estimate, fill=modeltype)) +
+  geom_boxplot(outlier.colour = 'red', na.rm=TRUE) +
+  facet_wrap(facet='.metric', scales='free', nrow=2) + 
+  labs(title='Comparison of performance of CV metrics between 4 model types',
+       subtitle='By model type and metric',
+       x='metric',
+       y='metric distribution') +
+  scale_x_discrete(labels=NULL)
+
+```
+In terms of cross-validation metrics, we can see that the logistic regression and the tree-based models are perform similarly and have relatively tightly distributed values.  This means that any of these single models tends to have the same performance on slightly different datasets.  On the other hand, naive bayes does tend to have relatively strong spread in the performance metrics, meaning that the model itself has substantial variance based on the data that it is given.  This suggests that naive bayes may not be the best model for this data.
+
+```{r performance summaries, message=FALSE}
+best_fold_metrics %>%
+  group_by(modeltype, .metric) %>%
+  summarise(mean_value = mean(.estimate, na.rm = TRUE)) %>%
+  ggplot(mapping = aes(x=.metric, y=mean_value, fill = modeltype)) +
+    geom_col(position = "dodge") + 
+    labs(title='Comparison of performance of CV metrics between 4 model types',
+       subtitle='By model type and metric',
+       x='metric',
+       y='mean value across folds')
+  
+```
+Here, we can see the same plot as before, but as a comparison between the average values of these metrics over the cross-validation folds.  We again see the challenges faced by naive bayes whereas the other models perform relatively similarly.
+
+# Training data
+## Basic performance overview
+```{r compare training metrics}
+#get list of prediction dataframes
+model_preds_dfs <- mdl_list %>%
+  map(~get(str_c(., '_final_fit'))) %>%
+  map(~get_prediction_dataframes(., train_data))
+
+#give list elements names
+names(model_preds_dfs) <- mdl_list
+
+#get aggregated training metrics
+train_metrics <- model_preds_dfs %>%
+  map(~summary(conf_mat(., particle_class, .pred_class))) %>%
+  map2_dfr(names(model_preds_dfs), function(df, mdl_name){mutate(df, mdl_name=mdl_name)})
+
+#plot
+train_metrics %>%
+  ggplot(aes(x=.metric, y=.estimate, fill=mdl_name))+
+  geom_col(position='dodge') + 
+  labs(x='metric', y='metric value', title='Comparison of model metrics', subtitle='Train set', fill='Model Type') +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+Re-predicting on the entire training set, we see again that naive bayes has challenges in contrast to the other models.  We also see that here, the random forest dominates.  In terms of the default threshold of 0.5, sensitivity is best by far with the random forest.
+
+## Compare ROCs
+```{r compare training rocs}
+#plot performance
+plot_performance_curves(model_preds_dfs, unlist(mdl_list))
+```
+The ROC curves and AUC again suggest great performance for everything other than Naive Bayes, although the random forest again dominates.  The performance of the random forest is so good that it is suspicious, and could suggest overtraining (poor generalization).  This will be explored in the next section which evaluates the models on the holdout set.
+
+## Calibration Plots
+```{r compare training calibrations}
+#add model name
+cal_df <- model_preds_dfs %>%
+  map2_df(names(model_preds_dfs), function(df, mdl_name){mutate(df, mdl_name=mdl_name)})
+
+#plot calibration curves
+plot_calibration_curve(cal_df)
+```
+The calibration plots here show that the model is relatively well calibrated for all of the expected models (not Naive Bayes).  Glmnet has the best calibration (closest to the diagonal line), and the tree based-models exhibit the standard s-shaped curve which is most pronounced in the random forest.  The random forest may need a bit of additional calibration to accurately reflect probabilities rather than general scores.
+
+# Test data
+## Basic performance overview
+
+```{r compare test performance}
+#get list of prediction dataframes
+model_test_preds_dfs <- mdl_list %>%
+  map(~get(str_c(., '_final_fit'))) %>%
+  map(~get_prediction_dataframes(., test_data))
+
+#give list elements names
+names(model_test_preds_dfs) <- mdl_list
+
+#get aggregated metrics
+test_metrics <- model_test_preds_dfs %>%
+  map(~summary(conf_mat(., particle_class, .pred_class))) %>%
+  map2_dfr(names(model_test_preds_dfs), function(df, mdl_name){mutate(df, mdl_name=mdl_name)})
+
+#plot
+test_metrics %>%
+  ggplot(aes(x=.metric, y=.estimate, fill=mdl_name))+
+  geom_col(position='dodge') + 
+  labs(x='metric', y='metric value', title='Comparison of model metrics', subtitle='Test set', fill='Model Type') +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+```
+As expected, the models perform a bit worse on the test data; however, we see that the random forest's performance has not diminished substantially.  We can conclude that this model is probably not overtrained, and that it is just an extremely good model.  The two tree-based models seem to perform the best, although glmnet is not far behind.  The sensitivity leaves some to be desired, although we've seen with the random forest that the threshold may be tuned in order to provide better estimations of the positive class.
+
+```{r compare rocs}
+#plot performance
+plot_performance_curves(model_test_preds_dfs, unlist(mdl_list))
+```
+The ROC/PRC and ROC-AUC and PR-AUC both exhibit good performance for the expected models.  They're of course a bit lower than the training set, but the performance is still very good.  
+
+```{r compare calibrations}
+#add model name
+cal_test_df <- model_test_preds_dfs %>%
+  map2_df(names(model_test_preds_dfs), function(df, mdl_name){mutate(df, mdl_name=mdl_name)})
+
+#plot calibration curves
+plot_calibration_curve(cal_test_df)
+
+```
+This is an extremely interesting plot that suggests that perhaps, we may be able to accept the outputs of almost all of the models (except Naive Bayes) to be probabilities rather than simply scores.
+
+# Save markdown file
+```{r save markdown}
+#fs::file_copy('55-cv-comparison.nb.html', './html_results/55-cv-comparison.nb.html', overwrite=TRUE)
+```
+

@@ -1,0 +1,91 @@
+---
+title: "53-randomforest-performance"
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: true
+---
+
+In this notebook, we will look at the performance of the randomForest modeling strategy.
+
+**Note that prior to running this notebook 46-randomForest-modeling must already have been run to generate new results.  Otherwise, load using the provided data loading chunk.**
+
+```{r load required packages, results='hide'}
+#load previous notebook data
+source(knitr::purl("40-modeling.Rmd"))
+source(knitr::purl("50-reporting.Rmd"))
+fs::file_delete("40-modeling.R")
+fs::file_delete("50-reporting.R")
+
+pacman::p_load(vip, tidytext, ranger)
+```
+
+# Load Saved Data
+```{r load saved random forest}
+move_model_info('rf', 'load');
+```
+
+# Selected Model Performance Evaluation
+## Cross validation metrics from best model
+Let's first evaluate the performance using the cross-validation metrics from before.  However, here, we'll only look at the best model.
+```{r best model cross validation}
+#get best rf metrics
+best_rf_fold_metrics <- calculate_best_performance_metrics(rf_fold_metrics, best_rf_params)
+best_rf_fold_metrics %>%
+  group_by(.metric) %>% 
+  summarize(overall_perf = mean(.estimate))
+```
+Here we can see the overall performance of the best model during its cross validation phase.  This performance mirrors the behavior of the previous cross-validation metrics.  The ROC AUC is again looking very stable, while the PR AUC leaves a bit to be desired.  The metrics which rely on threshold are very stable and performant for calculations which rely or focus heavily on the class of disinterest.  On the other hand, the sensitivity and ppv leave much to be desired.  Again, implementing a tailored thresholding strategy here will allow for better use of the model.
+
+# Performance on training data as a whole
+Here, we look at the confusion matrix for the entire training set as well as computations from the confusion matrix.
+```{r extract and visualize training performance}
+#get prediction class and probabilities
+rf_training_preds <- get_prediction_dataframes(rf_final_fit, train_data)
+```
+
+## ROC Curve
+Let's start by looking at an ROC curve.
+
+```{r plot rf ROC and AUC}
+plot_performance_curves(rf_training_preds)
+```
+These are outrageously good ROC/PRC curves.  Suspiciously good.
+
+## Interpretating probability thresholds
+In this section, we gain insight into what we should do for thresholding and our expectations surrounding it.
+```{r}
+plot_label_by_score(rf_training_preds)
+```
+This plot demonstrates that the model has really great classification capabilities; however, the threshold of 0.5 is clearly not optimal.  A threshold closer to about 0.48 might result in better classification accuracy as this is where the true delineation appears to occur.
+
+### Calibration curve
+In this section, we look at the calibration curve of the model.  Calibration curves closer to the 45 degree line demonstrate better calibrated models (e.g., where scores can be interpreted as probabilities).
+
+```{r glmnet calibration curve}
+plot_calibration_curve(rf_training_preds, mdl_name='rf')
+```
+This model seems to demonstrate a traditional s-shaped calibration curve, meaning that it overestimates probabilities under 0.5 and underestimates those for >0.5.  This model may benefit from additional score adjustment strategies.
+
+## Applied probability thresholds
+```{r confusion matrix}
+#calculate confusion matrix
+rf_conf_mat <- calculate_confusion_matrix(rf_training_preds)
+```
+
+# Explaining the model
+## Variable imporance
+What parameters are contributing most strongly to the classification?  Do we see evidence of data snooping?  Let's take a look!  Note that this cell for random forest takes a while to run.
+
+```{r rf variable importance, fig.height=6}
+rf_vip <- plot_variable_importance(rf_final_fit, assessment_data=train_data, mdl_name = 'rf', positive_class='exp')
+```
+Transparency holds the greatest importance for these models and for determining microdebitage, followed by fiber_length, f_length, and e_length. As discussed in the coding meeting, these last three variables should be investigated to see if one of these length variables holds the most importance (to the extent that the other two variables derive their importance only in their relationship to this dominant length variable). 
+
+# Save markdown file
+```{r save markdown}
+#fs::file_copy('53-randomforest-performance.nb.html', './html_results/53-randomforest-performance.nb.html', overwrite=TRUE)
+```
+

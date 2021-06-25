@@ -1,14 +1,308 @@
 ---
-title: "50_reporting"
-output: html_notebook
+title: "50-reporting"
+output: html_document
 ---
 
-Report the results of the project with relevant performance and modeling considerations.
+This file contains general functions to be applied across several model types for interpretation.
 
-# Model-based variable importance
+```{r required imports}
+pacman::p_load(yardstick, precrec, vip,
+               glmnet, naivebayes, xgboost, ranger)
+```
+
+# Prediction with defined outcomes
+```{r predict using fit on selected data}
+get_prediction_dataframes <- function(final_fit, pred_data, ...) {
+  
+  #get prediction class and probabilities
+  class_pred_df <- 
+    predict(final_fit, pred_data, ...) %>%
+    bind_cols(predict(final_fit, pred_data, type = "prob")) %>% 
+    bind_cols(pred_data %>% 
+                select(particle_class))
+  
+  return (class_pred_df)
+}
+```
+
+# Performance metric analysis
+
+```{r calculate and print best xval model metrics}
+calculate_best_performance_metrics <- function (fold_metrics, best_params, mdl_name=NULL) {
+  
+  #add name to model if desired
+  if(is.null(mdl_name)){
+    mdl_name = 'selected model'
+  }
+  
+  #get metrics
+  best_fold_metrics <- fold_metrics %>%
+    filter(.config==best_params$.config[[1]])
+
+  #plot
+  print(best_fold_metrics %>%
+    mutate(facet_val = if_else(.metric== 'roc_auc' | .metric=='pr_auc' | .metric=='f_meas', 'Aggregate metrics', 'Confusion matrix metrics')) %>%
+    ggplot(aes(x=.metric, y=.estimate, fill=.metric)) +
+    geom_boxplot(outlier.shape = NA, na.rm=TRUE) +
+    geom_jitter(aes(x=.metric, y=.estimate), na.rm=TRUE) +
+    facet_grid(cols=vars(facet_val), scales='free') + #just to get on separate plots
+    labs(title='Distribution of cross validation metrics for best hyperparameter set',
+         subtitle=str_c('By metric, for ', mdl_name),
+         x='metric',
+         y='metric estimate') +
+    theme(legend.position = "none"))
+
+  return (best_fold_metrics)
+}
+```
+
+```{r generate confusion matrix stats}
+calculate_confusion_matrix <-function (pred_frame) {
+#calculate confusion matrix
+pred_conf <- pred_frame %>%
+  conf_mat(particle_class, .pred_class) 
+
+#get summary info
+t1 <- pred_conf %>%
+  summary() %>%
+  select(-.estimator) %>%
+  gridExtra::tableGrob(rows=NULL, theme=gridExtra::ttheme_default(base_size=10))
+
+#plot cmat info
+cm <- pred_conf %>%
+  autoplot(type='heatmap') +
+  labs(title='Confusion matrix for training data')
+
+gridExtra::grid.arrange(cm, t1, ncol=2)
+
+return (t1)
+}
+```
+
+# Plot prediction data frame
+```{r plot the probabilities for predicitons}
+plot_prediction_probabilities <- function(pred_frame){
+  new_training_preds <- filter(pred_frame, .pred_site < 0.8)
+  alpha <- ifelse(pred_frame$particle_class == "exp", 0.4, 0.1)
+
+
+ggplot(data = pred_frame, mapping = aes(x = .pred_class , y =.pred_site, color = particle_class)  ) +
+  geom_jitter(width = 0.4, size = 1, alpha = alpha ) +
+  xlab("Model Predicted Class") + ylab("Probability of Site") +
+  labs(title="Probability Prediction Plots")
+  
+}
+```
+
+# Calibration curve
+```{r plot a calibration curve based on prediction}
+
+plot_calibration_curve <- function(pred_frame, mdl_name=NULL){
+  
+  #add compatibility for plotting many models
+  if(!('mdl_name' %in% names(pred_frame))){
+    
+    #if you don't provide a value, you get the default
+    if(is.null(mdl_name)){
+      mdl_name <- 'mdl'
+    }
+    
+    #otherwise, you can specifically name a single model
+    pred_frame <- pred_frame %>%
+      mutate(mdl_name = mdl_name)
+      
+  }
+  
+  #get training pred labels in a format compatible with geom_smooth
+  new_training_preds <- as.data.frame(pred_frame)
+  new_training_preds$particle_class <- as.numeric(new_training_preds$particle_class)
+  new_training_preds[, 4][new_training_preds[, 4] == 2] <-0
+  
+  #plot calibration curve
+  ggplot(data = new_training_preds, mapping = aes(x = .pred_exp , y = particle_class)  ) +
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+    scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+    geom_smooth(aes(x = .pred_exp, y = particle_class, color=mdl_name ), se = F, method = "loess") + 
+  
+    geom_abline() +
+    xlab("Model Probability of Experimental") + ylab("True Particle Class (Site [0] to Experimental[1]") +
+    labs(title="Calibration Curve", color='Model Type')
+  
+  
+}
+```
+
+# Probability-based curves
+```{r function for plotting ordered probability and class relation}
+plot_label_by_score <- function(preds_df){
+  #Function plots ordered probability with actual class as coloring for visual inspection of misclassification
+  #preds_df: prediction dataframe with minimally .pred_exp and particle_class columns
+  
+  preds_df %>%
+    arrange(.pred_exp)%>%
+    mutate(prob_order = factor(1:nrow(.)))%>%
+    ggplot(aes(x=1:nrow(preds_df), y=.pred_exp, color=particle_class))+
+    geom_point(size=1, alpha=0.6) +
+    labs(x='Sorted order of scores',
+         y='Scores',
+         title='Actual class label based on increasing score')
+}
+```
+
+```{r function for viewing misclassification by score}
+plot_misclassification_rates <- function(preds_df){
+  #Function plots misclassification rate by score bin
+  #preds_df: prediction dataframe with minimally .pred_exp and particle_class columns
+  
+  preds_df %>%
+    mutate(is_wrong = (.pred_class != particle_class)) %>%
+    mutate(bin_start = str_match(cut_interval(.$.pred_exp, n=20), "[\\(\\[]([\\d\\.]+).+]")[,2]) %>%
+    mutate(is_fp = ifelse(bin_start<0.5, "fn", "fp")) %>%
+    group_by(bin_start) %>%
+    summarise(bin_counts=sum(is_wrong)/n(), error_type=unique(is_fp)) %>%
+    ggplot(aes(x=bin_start, y=bin_counts, fill=error_type)) +
+    geom_col() +
+    labs(x='score interval', y='Percentage misclassified in bin', title='Misclassification rate in probability interval') + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+```
+
+
+```{r function for ROC curves}
+plot_performance_curves <- function(pred_dfs, model_names=NULL, pos_class='exp'){
+  #Function plots ROC and PR AUC curves for one or more models and returns the eval information
+  #preds_df: a single dataframe or list of dataframes containing prediction info (.pred_exp and particle_class at least)
+  #model_names: VECTOR of model names corresponding to order of preds_df
+  #pos_class (default 'exp'): positive class or class of interest
+  
+  #if passed in a single dataframe for plotting, make into list
+  if('tbl_df' %in% class(pred_dfs))
+    pred_dfs<-list(pred_dfs)
+  
+  #get list of scores for plotting
+  scores_list <- pred_dfs %>%
+    map(~select(., .pred_exp)) %>%
+    join_scores()
+  
+  #get list of labels for plotting
+  labels_list <- pred_dfs %>%
+    map(~select(., particle_class)) %>%
+    join_labels()
+  
+  #fix model names if necessary
+  if(is.null(model_names)){
+    model_names <- str_c('Model', 1:length(pred_dfs))
+  }
+  
+  #calculate model eval and autoplot
+  model_eval <- evalmod(scores = scores_list, labels = labels_list, modnames = model_names, posclass = pos_class)
+  autoplot(model_eval)
+  return(model_eval)
+}
+```
+
+# Variable Importance
+**Note about the following function:** There is a real oddity about the behavior of `vi_permute`.  Providing a single interface like this to a set of functions which have differing implementations somewhat has resulted in some oddball behavior.  The primary oddities as follows:
+
+## glmnet
+Consider the documentation of the [0.3.2 documentation of vi_permute.R](https://rdrr.io/cran/vip/src/R/vi_permute.R).  Lines 339-341 show the inputs to the predict function.  According to the predict function of glmnet documented [here](https://github.com/cran/glmnet/blob/master/R/predict.glmnet.R), it needs to receive parameters `newx`(to specify the data to be predicted on) and `s` (if you want to specify a penalty value).  Since the model is evaluated at a specific penalty, specifying this value is important.  Additionally, the default `predict` method incorrectly specifies `newx` as `newdata`.  For this reason, two wrappers are implemented - first in th 51-glmnet-performance to fix the `newdata` issue and within this function to correctly specify `s`.  This makes this function much more complicated unfortunately.
+
+
+The [0.3.2 documentation of vi_permute.R](https://rdrr.io/cran/vip/src/R/vi_permute.R) makes changes to the ordering of the factors based on mfun (here, `metric_auc`, source in [metrics.R](https://rdrr.io/cran/vip/src/R/metrics.R)).  This results in curious behavior across models, as the output of the `predict` function must align with these values.  This may need to be changed to accommodate our current factor orderings.  This additionally affects the tree-based models as their implementation for predict seems to differ from the glmnet and naiveBayes models.  The xgboost implementation [boost_tree.R](https://github.com/tidymodels/parsnip/blob/master/R/boost_tree.R) and random forest implementation  [rand_forest_data.R](https://github.com/tidymodels/parsnip/blob/master/R/rand_forest_data.R) in parsnip are listed for reference and inspection.  It may be more straightforward to use their default permutation implementations, but whether that is identical to results of the `vi_permute` function from vip should be evaluated. 
+
+## Permutation importance
+The permutation importance is a model-agnostic measure of variable importance.  Model-specific measures of variable importance are also available below.
+
+```{r generic plot for variable importance}
+plot_variable_importance <- function(wkflw, assessment_data, mdl_name=NULL, plot_type='default',
+                                     p_metric='auc', target='particle_class', positive_class='exp', smaller_is_better=NULL){
+  #Function plot_variable_importance plots permutation importance
+  #Inputs: wkflw: fitted final fit (workflow object)
+  #        newdata: raw tibble to be processed with recipe and then predicted on
+  #        mdl_name (default NULL): string of model name or type
+  #        pred_wrapper(default predict): wrapper for predict for custom cases
+  #        plot_type (default 'default'): 'abs' plots and orders by absolute importance, 'default' plots by signed importance
+  #        p_metric (default 'auc'): string of metric to use for comparing permutation importance
+  #        target (default 'particle_class'): string name of column in newdata to be predicted (outcome variable)
+  #        positive_class (default 'exp'): string name of reference class or class of interest
+  #        smaller_is_better (default NULL):  boolean of whether the p_metric is better when a higher value (e.g., AUC) or lower (e.g., RMSE)
+  #        ...: other parameters for wrapper functions (currently a workaround for glmnet) or for vi_permute
+  #Output: prints variable importance based on plot_type
+  #Returns: named list of permimp (dataframe of permutation importance), plt (ggplot object of plot_type)
+  
+  #a bit of input validation
+  if(is.null(mdl_name)){
+    mdl_name <- 'selected model'
+  }
+
+  if(plot_type!='default' & plot_type!='abs')
+    stop("parameter 'plot_type' must be 'abs' or 'default'.")
+
+  #the following operations on wkflw and data are a workaround
+  #since vi_permute on workflows isn't currently implemented
+  #get fit
+  mdl <- wkflw
+  mdl_recipe <- pull_workflow_prepped_recipe(mdl)
+  
+  pred_wrapper<-function(object, newdata, ref_cls = positive_class){
+    #message('here')
+    #print(colnames(new_data))
+    #res <- predict(object, new_data=newdata, type='class')
+    #pred_vec <- ifelse(res$.pred_class==ref_cls, yes=1, no=0)
+    
+    res <- predict(object, new_data=newdata, type='prob')
+    pred_vec <- res %>%
+      select(contains(ref_cls)) %>%
+      pull()
+      
+    return (pred_vec)
+  }
+  
+  #get permutation importance
+  vip_res <- vi_permute(object=mdl, train=assessment_data, target=target,
+                        metric=p_metric, pred_wrapper=pred_wrapper, reference_class=positive_class,
+                        smaller_is_better=smaller_is_better, new_data=assessment_data)
+  
+  #drop rows which aren't modeled
+  keep_cols <- mdl_recipe$var_info %>%
+    filter(role=='predictor' | role=='outcome') %>%
+    pull(variable)
+  
+  vip_res <- vip_res %>%
+    filter(Variable %in% keep_cols)
+  
+  #determine plot base
+  if(plot_type=='default'){
+    g <- vip_res %>%
+      ggplot(aes(x=fct_reorder(Variable, Importance), y=Importance)) +
+      geom_col() +
+      coord_flip()
+    } else {
+      g<- vip_res %>%
+      ggplot(aes(x=fct_reorder(Variable, abs(Importance)), y=abs(Importance), fill=permute_sign)) +
+      geom_col() +
+      coord_flip()
+    }
+  
+  #plot rest
+  g <- g + labs(title = str_c('Permutation importance of features in ', mdl_name),
+                subtitle = 'Change is (baseline - permuted)',
+                x = 'Feature',
+                y = str_c('Change in ', p_metric, ' due to permutation'))
+  
+  print(g)
+  
+  #return both
+  return(list(permimp = vip_res,
+              plt = g ))
+}
+  
+```
+
+## Model-based variable importance
 ```{r model based variable importance helper}
 get_vip <- function(final_fit, ...){
-  #helper function to model_variable_importance to calculate importance
+  #helper function to model_variable_importance to calculate importance (should not be called directly)
   #Inputs: final_fit: tidymodels workflow fit
   #        ...: additional parameters for vi_model (from vip)
   #Outputs: dataframe of variable importance
