@@ -9,7 +9,7 @@ Analyzing lithic microdebitage (<4mm debris produced in the creation of stone to
     <th><img style="vertical-align: bottom;" src="https://user-images.githubusercontent.com/78614805/108857136-62f74c00-75b0-11eb-9836-ca2441beb350.jpg" width=40% /></th>
   </tr>
   <tr>
-    <th>Modern stoneknapper creating stone tools</th>
+    <th>Mike McBride, modern stoneknapper creating stone tools.</th>
     <th>A biface made by Mike McBride (who reproduces ancient stone tools) from Edwards Chert with copper tools. The bag above contains microdebitage that Mike produced while making the biface.</th>
   </tr>
   <tr>
